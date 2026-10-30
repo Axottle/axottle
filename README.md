@@ -74,11 +74,13 @@ Connect external clients and automate operations through scoped permissions. The
 
 ## Install
 
-On a Linux server (amd64 or arm64) with `curl` and `sudo`:
+On a Linux server (amd64 or arm64) with `curl`. Run as root or use an account with `sudo` access:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | bash
 ```
+
+The installer requests `sudo` itself when needed and keeps setup, progress and the result in one terminal window.
 
 Currently installs **v2.0.0-beta.1**. The interactive installer downloads the matching core and engine, verifies their signatures and sets up the panel. Both release repositories must be public for installation without a token; private installations use the instructions in the [release notes](https://github.com/Axottle/axottle/releases/tag/v2.0.0-beta.1).
 

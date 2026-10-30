@@ -74,11 +74,13 @@ Axottle — панель управления инфраструктурой н�
 
 ## Установка
 
-На Linux-сервере (amd64 или arm64) с `curl` и `sudo`:
+На Linux-сервере (amd64 или arm64) с `curl`. Запускайте от root или от пользователя с доступом к `sudo`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | bash
 ```
+
+Установщик сам запросит `sudo`, если это необходимо. Настройка, ход установки и результат остаются в одном окне терминала.
 
 Сейчас устанавливается **v2.0.0-beta.1**. Интерактивный мастер скачивает ядро и движок одной версии, проверяет подписи и настраивает панель. Для установки без токена оба релизника должны быть публичными; для приватной установки используйте [инструкцию к выпуску](https://github.com/Axottle/axottle/releases/tag/v2.0.0-beta.1).
 
