@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/assets/readme-banner.svg" width="1280" alt="Axottle — Infrastructure, connected." />
+  <img src="docs/assets/readme-banner.svg" width="1280" alt="Axottle — Making the complex simple." />
 </p>
 
-<p align="center"><strong>Your infrastructure. One place to run it.</strong></p>
+<p align="center"><strong>Making the complex simple.</strong></p>
 <p align="center"><strong>English</strong> · <a href="README.ru.md">Русский</a> · <a href="https://docs.axottle.com">Documentation</a> · <a href="https://docs.axottle.com/ru/getting-started/quickstart">Getting started</a></p>
 
 ---

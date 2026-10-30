@@ -2,10 +2,10 @@
   "files": {
     ".gitignore": "c1772af9dcfc20dbd174e0354a4e068434fdaca2e68fef82945c3cdb10d2f310",
     "LICENSE": "41f9b38758a1bd419f7d5d0a79a1f477d18703e2f24c095dbf76ce907755d378",
-    "README.md": "4bedd71364437ff4b306b2d7d4e2b009ef1bbcea345877ebec8eb418fc0fca33",
-    "README.ru.md": "b76e2d2a0df630b80d63880aec7a2b2ccbced636f6f7c14a7eb8ef2f0639d37a",
+    "README.md": "c4696a8a42290643f54b1a0eba63765dedc6bc4e066cb8a3769bc5a2dd9c605e",
+    "README.ru.md": "70f49074f58a3830e77f5037104ff24ef6b9154827087058849d36611eb1ff3e",
     "cmd/axottle-core/main.go": "40ba2013dc0776b1484668b6bb0b06c367e093c627eece2f6398179261d94d6f",
-    "docs/assets/readme-banner.svg": "2d21203d4ccc0f99247417c636f150ae3c338220e5df1393f54542dfb339f644",
+    "docs/assets/readme-banner.svg": "5ca6f5bd20709a983d2189611e7447d64d7cb6c6f7affead152505fe3deb2210",
     "go.mod": "4a1ab0eb4866c11b9c11da1656495c99f51d092025457913bda8c1e0304a528c",
     "go.sum": "45af2c8f5cef22bdb8a44c322a7ff1c990630accb3120bdbcdd36ec478274f70",
     "internal/audit/audit.go": "2301925ae1e7ceb43cfd79821fa1310a7d46ec263ad63b4138517572d7d1a84b",
