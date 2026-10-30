@@ -1,0 +1,1962 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Axottle — Новая дизайн-система админ-панели
+   Изолированный слой токенов: применяется только к [data-axo-new],
+   чтобы не конфликтовать со старой темой.
+
+   Две независимые оси, обе объявляются на <html>:
+     • режим   — [data-axo-mode="light" | "dark"];
+     • палитра — [data-axo-palette]: "coral" (по умолчанию, объявлена
+       прямо в базовых блоках) и "mint" (историческая зелёная).
+
+   Coral взят из логотипа: тело аксолотля #FC9CA1, рот #E0454D. В светлой
+   теме акцент затемнён до #C82C3C ради контраста с белым текстом, в тёмной
+   стоит цвет логотипа как есть. Статус «критично» уведён в кирпично-
+   оранжевый (18°), чтобы розовая кнопка действия не читалась как danger:
+   до акцента 24°, до «внимания» 23°.
+
+   Тема объявляется через <html>, а не через обёртку приложения, по двум
+   причинам: диалоги, тосты и выпадающие списки уходят в портал за пределы
+   [data-axo-new], и разметка приходит с сервера со светлым режимом —
+   атрибут на <html> ставит блокирующий скрипт из app/layout.tsx, чтобы
+   тёмная тема не мигала светлой до гидратации.
+
+   Светлая тема: тёплый розовый воздух, белые карточки, мягкие тени.
+   Тёмная тема: midnight-graphite с розовым подтоном, мягкое свечение,
+   низкий контраст декора, премиальная глубина.
+   ───────────────────────────────────────────────────────────────────── */
+
+[data-axo-new] {
+  /* Шкала радиусов */
+  --axo-radius-xs: 8px;
+  --axo-radius-sm: 12px;
+  --axo-radius-md: 16px;
+  --axo-radius-lg: 20px;
+  --axo-radius-xl: 24px;
+  --axo-radius-2xl: 28px;
+  --axo-radius-pill: 999px;
+
+  /* Шкала отступов */
+  --axo-space-1: 4px;
+  --axo-space-2: 8px;
+  --axo-space-3: 12px;
+  --axo-space-4: 16px;
+  --axo-space-5: 20px;
+  --axo-space-6: 24px;
+  --axo-space-8: 32px;
+  --axo-space-10: 40px;
+  --axo-space-12: 48px;
+
+  /* Шрифты */
+  --axo-font-sans: "Google Sans", "Inter", "Manrope", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --axo-font-mono: "Google Sans Code", "JetBrains Mono", "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Семантические токены — палитра Coral, светлая.
+     Ниже переопределяются по режиму и по палитре. */
+  --axo-bg: #FBF4F4;
+  --axo-bg-elev: #FDFBFB;
+  --axo-surface: #FFFFFF;
+  --axo-surface-2: #FCF5F5;
+  --axo-surface-3: #F7EBEB;
+  --axo-surface-inverse: #1A1010;
+  --axo-border: #F2E3E3;
+  --axo-border-strong: #E3CCCC;
+  --axo-logo-bg: #FBF3F3;
+  --axo-logo-border: #E8D6D6;
+  --axo-text: #1A1313;
+  --axo-text-muted: #6B5B5B;
+  --axo-text-faint: #9A8B8B;
+  --axo-text-inverse: #FDF5F5;
+
+  /* Акценты */
+  --axo-accent: #C82C3C;
+  --axo-accent-hover: #AC2433;
+  --axo-accent-soft: #FDECEE;
+  --axo-accent-text: #FFFFFF;
+  --axo-shadow-accent-hover: 0 6px 18px rgba(200, 44, 60, 0.24);
+
+  /* Мягкий бренд-оттенок: иконка активного пункта меню, аватар, акварель
+     фона. В мятной палитре это был `--axo-mint*`; имена сохранены как
+     алиасы, чтобы не переписывать 37 обращений в компонентах. */
+  --axo-blush: #FCB9BC;
+  --axo-blush-soft: #FDECEE;
+  --axo-blush-deep: #FC9CA1;
+  --axo-mint: var(--axo-blush);
+  --axo-mint-soft: var(--axo-blush-soft);
+  --axo-mint-deep: var(--axo-blush-deep);
+
+  /* Статусы */
+  --axo-status-ok: #0E7A52;
+  --axo-status-ok-soft: #DDF2E8;
+  --axo-status-warn: #8A5F05;
+  --axo-status-warn-soft: #FAEDCD;
+  --axo-status-crit: #AF4519;
+  --axo-status-crit-soft: #FBE7DC;
+  /* Текст поверх заливки «критично» (кнопка danger). Отдельный токен, потому
+     что в тёмной теме заливка светлая и белый текст на ней не читается. */
+  --axo-status-crit-text: #FFFFFF;
+  --axo-status-info: #2264A8;
+  --axo-status-info-soft: #DAEAF7;
+  --axo-status-mute: #9A8B8B;
+  --axo-status-mute-soft: #F0EAEA;
+
+  /* Акварель фона приложения (.axo-app-bg) */
+  --axo-fx-1: rgba(252, 185, 188, 0.40);
+  --axo-fx-2: rgba(253, 236, 238, 0.55);
+
+  /* Тёмная карточка «Состояние системы» на главной и её свечение */
+  --axo-hero-gradient: linear-gradient(135deg, rgba(26, 16, 16, 0.96) 0%, rgba(42, 18, 21, 0.95) 48%, rgba(68, 24, 29, 0.92) 100%);
+  --axo-hero-glow: rgba(252, 156, 161, 0.55);
+
+  /* Тени — мягкие, как в референсе */
+  --axo-shadow-sm: 0 1px 2px rgba(26, 19, 19, 0.04), 0 1px 1px rgba(26, 19, 19, 0.03);
+  --axo-shadow-md: 0 4px 16px rgba(26, 19, 19, 0.05), 0 1px 2px rgba(26, 19, 19, 0.03);
+  --axo-shadow-lg: 0 12px 40px rgba(26, 19, 19, 0.08), 0 2px 6px rgba(26, 19, 19, 0.04);
+  --axo-shadow-xl: 0 24px 64px rgba(26, 19, 19, 0.12);
+  --axo-shadow-glow: 0 0 0 4px rgba(200, 44, 60, 0.12);
+
+  /* Кривые */
+  --axo-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --axo-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.axo-brand-wordmark {
+  font-family: "Cause", "Avenir Next", var(--axo-font-sans), sans-serif;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ────────── DARK (Coral) ──────────
+   Второй селектор ловит режим с <html>: там его выставляет блокирующий
+   скрипт из app/layout.tsx ещё до гидратации, когда обёртка в разметке
+   всё ещё несёт data-axo-mode="light". */
+[data-axo-new][data-axo-mode="dark"],
+html[data-axo-mode="dark"] [data-axo-new] {
+  --axo-bg: #0A0708;
+  --axo-bg-elev: #100C0D;
+  --axo-surface: #181113;
+  --axo-surface-2: #1E1618;
+  --axo-surface-3: #251B1E;
+  --axo-surface-inverse: #1E1214;
+  --axo-border: #281D20;
+  --axo-border-strong: #35272A;
+  --axo-logo-bg: #241A1C;
+  --axo-logo-border: #3A2B2E;
+  --axo-text: #F2EBEB;
+  --axo-text-muted: #A99C9C;
+  --axo-text-faint: #776C6C;
+  --axo-text-inverse: #F2EBEB;
+
+  --axo-accent: #FC9CA1;
+  --axo-accent-hover: #FFB4B8;
+  --axo-accent-soft: rgba(252, 156, 161, 0.14);
+  --axo-accent-text: #2A0E10;
+  --axo-shadow-accent-hover: 0 6px 18px rgba(252, 156, 161, 0.20);
+
+  --axo-blush: #FFC0C3;
+  --axo-blush-soft: rgba(252, 156, 161, 0.16);
+  --axo-blush-deep: #FC9CA1;
+
+  --axo-status-ok: #3FCB8E;
+  --axo-status-ok-soft: rgba(63, 203, 142, 0.14);
+  --axo-status-warn: #F1B748;
+  --axo-status-warn-soft: rgba(241, 183, 72, 0.14);
+  --axo-status-crit: #F97A45;
+  --axo-status-crit-soft: rgba(249, 122, 69, 0.16);
+  --axo-status-crit-text: #2A0E0A;
+  --axo-status-info: #6BB7F1;
+  --axo-status-info-soft: rgba(107, 183, 241, 0.14);
+  --axo-status-mute: #776C6C;
+  --axo-status-mute-soft: rgba(169, 156, 156, 0.10);
+
+  --axo-fx-1: rgba(252, 156, 161, 0.07);
+  --axo-fx-2: rgba(107, 183, 241, 0.04);
+
+  --axo-hero-glow: rgba(252, 156, 161, 0.5);
+
+  --axo-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --axo-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --axo-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --axo-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --axo-shadow-glow: 0 0 0 4px rgba(252, 156, 161, 0.18);
+}
+
+/* ────────── Палитра «мята» — историческая зелёная ──────────
+   Живёт на <html data-axo-palette="mint">, поэтому цепляет и порталы, и
+   работает с первого кадра: атрибут ставит блокирующий скрипт.
+   Второй селектор в каждой паре — для локальных превью (плитка выбора
+   палитры в настройках рисует мятный фрагмент внутри розовой панели).
+   Оба блока задают один и тот же набор переменных: тёмный идёт следом и
+   всегда специфичнее, так что порядок каскада однозначен. */
+html[data-axo-palette="mint"] [data-axo-new],
+[data-axo-new][data-axo-palette="mint"] {
+  --axo-bg: #F1F6F4;
+  --axo-bg-elev: #FBFCFC;
+  --axo-surface: #FFFFFF;
+  --axo-surface-2: #F6FAF8;
+  --axo-surface-3: #EEF4F1;
+  --axo-surface-inverse: #0A1612;
+  --axo-border: #E3ECE7;
+  --axo-border-strong: #CFDBD4;
+  --axo-logo-bg: #F3F6F5;
+  --axo-logo-border: #D8E1DC;
+  --axo-text: #0F1A16;
+  --axo-text-muted: #5B6B65;
+  --axo-text-faint: #8A9893;
+  --axo-text-inverse: #F4FAF7;
+
+  --axo-accent: #0E8E72;
+  --axo-accent-hover: #0B7861;
+  --axo-accent-soft: #DCEFE7;
+  --axo-accent-text: #FFFFFF;
+  --axo-shadow-accent-hover: 0 6px 18px rgba(14, 142, 114, 0.25);
+
+  --axo-blush: #B8E5D5;
+  --axo-blush-soft: #DEF1E8;
+  --axo-blush-deep: #6FCBAE;
+
+  --axo-status-ok: #16A07A;
+  --axo-status-ok-soft: #DCEFE7;
+  --axo-status-warn: #C58A12;
+  --axo-status-warn-soft: #FAEDCD;
+  --axo-status-crit: #D14B4B;
+  --axo-status-crit-soft: #FBE1E1;
+  --axo-status-crit-text: #FFFFFF;
+  --axo-status-info: #2F7AB8;
+  --axo-status-info-soft: #DAEAF7;
+  --axo-status-mute: #8A9893;
+  --axo-status-mute-soft: #ECF0EE;
+
+  --axo-fx-1: rgba(184, 229, 213, 0.45);
+  --axo-fx-2: rgba(222, 241, 232, 0.55);
+
+  --axo-hero-gradient: linear-gradient(135deg, rgba(10, 22, 18, 0.96) 0%, rgba(11, 33, 27, 0.95) 48%, rgba(15, 55, 43, 0.92) 100%);
+  --axo-hero-glow: rgba(91, 229, 183, 0.6);
+
+  --axo-shadow-sm: 0 1px 2px rgba(15, 26, 22, 0.04), 0 1px 1px rgba(15, 26, 22, 0.03);
+  --axo-shadow-md: 0 4px 16px rgba(15, 26, 22, 0.05), 0 1px 2px rgba(15, 26, 22, 0.03);
+  --axo-shadow-lg: 0 12px 40px rgba(15, 26, 22, 0.08), 0 2px 6px rgba(15, 26, 22, 0.04);
+  --axo-shadow-xl: 0 24px 64px rgba(15, 26, 22, 0.12);
+  --axo-shadow-glow: 0 0 0 4px rgba(14, 142, 114, 0.12);
+}
+
+html[data-axo-palette="mint"][data-axo-mode="dark"] [data-axo-new],
+html[data-axo-palette="mint"] [data-axo-new][data-axo-mode="dark"],
+[data-axo-new][data-axo-mode="dark"][data-axo-palette="mint"] {
+  --axo-bg: #07090C;
+  --axo-bg-elev: #0B0F14;
+  --axo-surface: #11161D;
+  --axo-surface-2: #161C25;
+  --axo-surface-3: #1C2330;
+  --axo-surface-inverse: #0E1A15;
+  --axo-border: #1E2632;
+  --axo-border-strong: #2A3340;
+  --axo-logo-bg: #1A2029;
+  --axo-logo-border: #313B48;
+  --axo-text: #EAF1ED;
+  --axo-text-muted: #9AA8A2;
+  --axo-text-faint: #6A7770;
+  --axo-text-inverse: #EAF1ED;
+
+  --axo-accent: #34D8A8;
+  --axo-accent-hover: #5BE5B7;
+  --axo-accent-soft: rgba(52, 216, 168, 0.12);
+  --axo-accent-text: #06120E;
+  --axo-shadow-accent-hover: 0 6px 18px rgba(52, 216, 168, 0.22);
+
+  --axo-blush: #5BE5B7;
+  --axo-blush-soft: rgba(52, 216, 168, 0.16);
+  --axo-blush-deep: #34D8A8;
+
+  --axo-status-ok: #34D8A8;
+  --axo-status-ok-soft: rgba(52, 216, 168, 0.14);
+  --axo-status-warn: #F1B748;
+  --axo-status-warn-soft: rgba(241, 183, 72, 0.14);
+  --axo-status-crit: #FF6B6B;
+  --axo-status-crit-soft: rgba(255, 107, 107, 0.14);
+  --axo-status-crit-text: #2A0E0A;
+  --axo-status-info: #6BB7F1;
+  --axo-status-info-soft: rgba(107, 183, 241, 0.14);
+  --axo-status-mute: #6A7770;
+  --axo-status-mute-soft: rgba(154, 168, 162, 0.10);
+
+  --axo-fx-1: rgba(52, 216, 168, 0.06);
+  --axo-fx-2: rgba(107, 183, 241, 0.04);
+
+  --axo-hero-glow: rgba(91, 229, 183, 0.6);
+
+  --axo-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --axo-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --axo-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --axo-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --axo-shadow-glow: 0 0 0 4px rgba(52, 216, 168, 0.18);
+}
+
+/* ────────── Палитра графиков — ТОЛЬКО раздел поддержки ──────────
+   Категориальная палитра (идентичность: состояния тикетов, разбивки,
+   настроения) объявлена на [data-axo-support], поэтому эти переменные
+   существуют только внутри раздела поддержки и никак не влияют на
+   остальную панель. Порядок оттенков зафиксирован ради CVD-контраста
+   (проверено на #FFFFFF / #11161D).
+
+   Палитра намеренно не следует за брендом: категориальные цвета подобраны
+   так, чтобы шесть рядов различались при дальтонизме, и подгонка первого
+   оттенка под акцент сдвинула бы его вплотную к красному и оранжевому. */
+[data-axo-support] {
+  --axo-chart-1: #0E8E72; /* teal */
+  --axo-chart-2: #2A78D6; /* blue */
+  --axo-chart-3: #EDA100; /* amber */
+  --axo-chart-4: #6B4FD8; /* violet */
+  --axo-chart-5: #E34948; /* red */
+  --axo-chart-6: #EB6834; /* orange */
+  /* Дорожка для колец/прогресса и сетка (следуют теме автоматически) */
+  --axo-chart-track: var(--axo-surface-3);
+  --axo-chart-grid: var(--axo-border);
+}
+
+[data-axo-mode="dark"] [data-axo-support] {
+  /* Те же оттенки, приглушённые под тёмную поверхность #11161D. */
+  --axo-chart-1: #199E70;
+  --axo-chart-2: #3987E5;
+  --axo-chart-3: #C98500;
+  --axo-chart-4: #9085E9;
+  --axo-chart-5: #E66767;
+  --axo-chart-6: #D95926;
+}
+
+/* Подложка документа. Токены живут на [data-axo-new] и до <body> не
+   достают, а его фон красит старая тема из globals.css — поэтому цвета
+   продублированы здесь. Держать синхронно с --axo-bg соответствующей
+   палитры. Без этого белый фон документа просвечивает в момент, когда
+   обёртка панели ещё не отрисована. */
+html[data-axo-mode="light"] body { background-color: #FBF4F4; }
+html[data-axo-mode="dark"] body { background-color: #0A0708; }
+html[data-axo-palette="mint"][data-axo-mode="light"] body { background-color: #F1F6F4; }
+html[data-axo-palette="mint"][data-axo-mode="dark"] body { background-color: #07090C; }
+
+/* ────────── Базовые стили внутри новой темы ────────── */
+[data-axo-new] {
+  background: var(--axo-bg);
+  color: var(--axo-text);
+  font-family: var(--axo-font-sans);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* The toast viewport is a token host only. It must not inherit the app
+   background: the viewport stays mounted during a toast exit animation. */
+[data-axo-new][data-axo-toast-viewport] {
+  background: transparent;
+}
+
+.axo-provider-logo {
+  background: var(--axo-logo-bg, var(--axo-surface-2));
+  border-color: var(--axo-logo-border, var(--axo-border));
+}
+
+/* ────────── Мост на легаси-токены ──────────
+   Когда новая панель открывает легаси-компоненты (Modal,
+   block-inspector, entry-config-constructor, cdn-config-constructor),
+   они читают `--color-text/-bg/-surface/-border/-accent` из globals.css.
+   В старой панели цветовая схема переключается через `[data-mode]`
+   на `<html>`. В новой — через `[data-axo-mode]` на портале/обёртке.
+   Без моста легаси-компоненты в light-теме новой панели остаются
+   тёмными (текст #F8FAFC на белой карточке = «белая каша»).
+
+   Подменяем значения через CSS-переопределение по родителю. */
+[data-axo-new][data-axo-mode="light"] {
+  --color-bg: var(--axo-bg);
+  --color-surface: var(--axo-surface);
+  --color-surface-alt: var(--axo-surface-2);
+  --color-text: var(--axo-text);
+  --color-text-muted: var(--axo-text-muted);
+  --color-border: var(--axo-border);
+  --color-accent: var(--axo-accent);
+  --color-accent-hover: var(--axo-accent-hover);
+  --color-btn-text: #FFFFFF;
+}
+
+[data-axo-new][data-axo-mode="dark"] {
+  --color-bg: var(--axo-bg);
+  --color-surface: var(--axo-surface);
+  --color-surface-alt: var(--axo-surface-2);
+  --color-text: var(--axo-text);
+  --color-text-muted: var(--axo-text-muted);
+  --color-border: var(--axo-border);
+  --color-accent: var(--axo-accent);
+  --color-accent-hover: var(--axo-accent-hover);
+  --color-btn-text: var(--axo-bg);
+}
+
+[data-axo-new] *::selection {
+  background: var(--axo-accent-soft);
+  color: var(--axo-accent);
+}
+
+[data-axo-new] .axo-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: var(--axo-field-bg, var(--axo-surface));
+  background-clip: padding-box;
+  caret-color: var(--axo-text);
+}
+
+[data-axo-new][data-axo-mode="light"] .axo-input {
+  color-scheme: light;
+}
+
+[data-axo-new][data-axo-mode="dark"] .axo-input {
+  color-scheme: dark;
+}
+
+[data-axo-new] input[type="search"].axo-input::-webkit-search-decoration,
+[data-axo-new] input[type="search"].axo-input::-webkit-search-cancel-button,
+[data-axo-new] input[type="search"].axo-input::-webkit-search-results-button,
+[data-axo-new] input[type="search"].axo-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+[data-axo-new] input.axo-input:-webkit-autofill,
+[data-axo-new] input.axo-input:-webkit-autofill:hover,
+[data-axo-new] input.axo-input:-webkit-autofill:active,
+[data-axo-new] textarea.axo-input:-webkit-autofill,
+[data-axo-new] textarea.axo-input:-webkit-autofill:hover,
+[data-axo-new] textarea.axo-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--axo-text);
+  caret-color: var(--axo-text);
+  box-shadow: 0 0 0 1000px var(--axo-field-bg, var(--axo-surface)) inset;
+}
+
+[data-axo-new] input.axo-input:-webkit-autofill:focus,
+[data-axo-new] textarea.axo-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--axo-text);
+  caret-color: var(--axo-text);
+  box-shadow:
+    0 0 0 1000px var(--axo-field-bg, var(--axo-surface)) inset,
+    var(--axo-shadow-glow);
+}
+
+[data-axo-new] input:not(.axo-input):-webkit-autofill,
+[data-axo-new] input:not(.axo-input):-webkit-autofill:hover,
+[data-axo-new] input:not(.axo-input):-webkit-autofill:focus,
+[data-axo-new] input:not(.axo-input):-webkit-autofill:active,
+[data-axo-new] textarea:not(.axo-input):-webkit-autofill,
+[data-axo-new] textarea:not(.axo-input):-webkit-autofill:hover,
+[data-axo-new] textarea:not(.axo-input):-webkit-autofill:focus,
+[data-axo-new] textarea:not(.axo-input):-webkit-autofill:active {
+  -webkit-text-fill-color: var(--axo-text);
+  caret-color: var(--axo-text);
+  box-shadow: 0 0 0 1000px var(--axo-surface) inset;
+}
+
+[data-axo-new] *::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-axo-new] *::-webkit-scrollbar-track { background: transparent; }
+[data-axo-new] *::-webkit-scrollbar-thumb {
+  background: var(--axo-border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-axo-new] *::-webkit-scrollbar-thumb:hover {
+  background: var(--axo-text-faint);
+  background-clip: content-box;
+}
+[data-axo-new] .axo-tabs-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(106, 119, 112, 0.28) transparent;
+}
+[data-axo-new] .axo-tabs-scrollbar::-webkit-scrollbar {
+  height: 3px;
+  width: 3px;
+}
+[data-axo-new] .axo-tabs-scrollbar::-webkit-scrollbar-track,
+[data-axo-new] .axo-tabs-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+[data-axo-new] .axo-tabs-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+[data-axo-new] .axo-tabs-scrollbar::-webkit-scrollbar-thumb {
+  min-width: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(106, 119, 112, 0.24);
+}
+[data-axo-new] .axo-tabs-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(154, 168, 162, 0.38);
+}
+[data-axo-new][data-axo-mode="light"] .axo-tabs-scrollbar {
+  scrollbar-color: rgba(91, 107, 101, 0.22) transparent;
+}
+[data-axo-new][data-axo-mode="light"] .axo-tabs-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(91, 107, 101, 0.18);
+}
+[data-axo-new][data-axo-mode="light"] .axo-tabs-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 107, 101, 0.28);
+}
+
+/* ────────── Атмосферный фон ──────────
+   Оттенки берутся из палитры (--axo-fx-*), геометрия пятен — из режима. */
+[data-axo-new][data-axo-mode="light"] .axo-app-bg {
+  background:
+    radial-gradient(1200px 600px at 0% -10%, var(--axo-fx-1) 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--axo-fx-2) 0%, transparent 55%),
+    var(--axo-bg);
+}
+
+[data-axo-new][data-axo-mode="dark"] .axo-app-bg {
+  background:
+    radial-gradient(1000px 500px at 0% -10%, var(--axo-fx-1) 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--axo-fx-2) 0%, transparent 55%),
+    var(--axo-bg);
+  position: relative;
+}
+
+[data-axo-new][data-axo-mode="dark"] .axo-app-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 25% 20%, rgba(255,255,255,0.6) 0.5px, transparent 1px),
+                    radial-gradient(circle at 70% 60%, rgba(255,255,255,0.4) 0.5px, transparent 1px),
+                    radial-gradient(circle at 50% 90%, rgba(255,255,255,0.5) 0.5px, transparent 1px),
+                    radial-gradient(circle at 90% 30%, rgba(255,255,255,0.3) 0.5px, transparent 1px);
+  background-size: 220px 180px, 280px 220px, 200px 240px, 320px 260px;
+  opacity: 0.35;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ────────── Axosun: компактное окно поверх рабочей области ──────────
+   Окно не модальное: страница позади остаётся видимой, кликабельной и
+   прокручиваемой. Цветовой ореол живёт только вокруг самого окна. */
+[data-axo-new] .axo-agent-window-shell {
+  isolation: isolate;
+  container-name: axosun-window;
+  container-type: size;
+  right: 20px;
+  bottom: 20px;
+  width: min(var(--axo-agent-window-width, 480px), calc(100vw - 40px));
+  height: min(var(--axo-agent-window-height, 640px), calc(100dvh - 40px));
+}
+
+[data-axo-new] .axo-agent-window-glow {
+  position: absolute;
+  z-index: 0;
+  inset: -3px;
+  border-radius: 26px;
+  pointer-events: none;
+  opacity: 0.16;
+  transform: scale(0.995);
+  transform-origin: center;
+  box-shadow:
+    0 0 22px 4px color-mix(in srgb, var(--axo-accent) 28%, transparent),
+    0 0 46px 10px color-mix(in srgb, var(--axo-accent) 12%, transparent);
+  will-change: opacity, transform;
+}
+
+[data-axo-new][data-axo-activity="approval"] .axo-agent-window-glow {
+  opacity: 0.3;
+  transform: scale(1);
+}
+
+[data-axo-new][data-axo-activity="working"] .axo-agent-window-glow {
+  animation: axo-agent-exterior-breathe 3s ease-in-out infinite;
+}
+
+[data-axo-new] .axo-agent-window {
+  border: 1px solid color-mix(in srgb, var(--axo-accent) 34%, var(--axo-border));
+  background: color-mix(in srgb, var(--axo-surface) 84%, transparent);
+  box-shadow:
+    var(--axo-shadow-lg),
+    0 0 0 1px color-mix(in srgb, var(--axo-text) 5%, transparent);
+  backdrop-filter: blur(20px) saturate(1.12);
+  -webkit-backdrop-filter: blur(20px) saturate(1.12);
+}
+
+[data-axo-new] .axo-agent-window-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--axo-text) 8%, transparent);
+  background: color-mix(in srgb, var(--axo-surface) 28%, transparent);
+}
+
+[data-axo-new] .axo-agent-window-footer {
+  border-top: 1px solid color-mix(in srgb, var(--axo-text) 7%, transparent);
+  background: color-mix(in srgb, var(--axo-surface) 38%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+
+[data-axo-new] .axo-agent-window-body {
+  padding: 18px 20px 20px;
+}
+
+[data-axo-new] .axo-agent-window-content,
+[data-axo-new] .axo-agent-window-footer-content {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+[data-axo-new] .axo-agent-window-content {
+  height: 100%;
+  min-height: 100%;
+}
+
+[data-axo-new] .axo-agent-window-footer-content {
+  padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+}
+
+[data-axo-new] .axo-agent-window-resize-handle {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 22px 0 10px 0;
+  background: transparent;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+[data-axo-new] .axo-agent-setup {
+  display: grid;
+  grid-template-areas:
+    "intro"
+    "capabilities"
+    "action";
+  gap: 20px;
+  align-content: start;
+}
+
+[data-axo-new] .axo-agent-setup-intro {
+  grid-area: intro;
+}
+
+[data-axo-new] .axo-agent-setup-capabilities {
+  grid-area: capabilities;
+}
+
+[data-axo-new] .axo-agent-setup-action {
+  grid-area: action;
+}
+
+@container axosun-window (max-width: 430px) {
+  [data-axo-new] .axo-agent-window-body {
+    padding: 14px;
+  }
+
+  [data-axo-new] .axo-agent-window-footer-content {
+    padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  [data-axo-new] .axo-agent-setup {
+    gap: 16px;
+  }
+
+  [data-axo-new] .axo-permission-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  [data-axo-new] .axo-permission-actions > button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@container axosun-window (max-width: 430px) and (max-height: 520px) {
+  [data-axo-new] .axo-agent-setup {
+    gap: 12px;
+  }
+
+  [data-axo-new] .axo-agent-setup-intro p,
+  [data-axo-new] .axo-agent-setup-capabilities > p {
+    display: none;
+  }
+
+  [data-axo-new] .axo-agent-setup-capabilities,
+  [data-axo-new] .axo-agent-setup-action {
+    padding-top: 12px;
+  }
+}
+
+@container axosun-window (min-width: 660px) {
+  [data-axo-new] .axo-agent-setup {
+    grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.85fr);
+    grid-template-areas:
+      "intro action"
+      "capabilities action";
+    column-gap: 28px;
+    row-gap: 20px;
+  }
+
+  [data-axo-new] .axo-agent-setup-action {
+    align-self: stretch;
+    padding-top: 0;
+    padding-left: 24px;
+    border-top: 0;
+    border-left: 1px solid var(--axo-border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+@container axosun-window (min-height: 720px) {
+  [data-axo-new] .axo-agent-setup {
+    align-content: center;
+  }
+}
+
+/* ────────── Axosun: внутренний conversation layer ────────── */
+[data-axo-new] .axo-chat-turn {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-axo-new] .axo-chat-message {
+  min-width: 0;
+}
+
+[data-axo-new] .axo-chat-message-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  color: var(--axo-text-muted);
+}
+
+[data-axo-new] .axo-chat-message-user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+[data-axo-new] .axo-chat-message-user .axo-chat-message-meta {
+  justify-content: flex-end;
+  padding-right: 2px;
+}
+
+[data-axo-new] .axo-chat-user-bubble {
+  max-width: min(84%, 620px);
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--axo-accent) 36%, var(--axo-border));
+  border-radius: 16px 16px 5px 16px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--axo-accent-soft) 84%, transparent),
+      color-mix(in srgb, var(--axo-surface) 72%, transparent)
+    );
+  color: var(--axo-text);
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[data-axo-new] .axo-chat-message-agent {
+  width: 100%;
+  padding-left: 13px;
+  border-left: 1px solid color-mix(in srgb, var(--axo-accent) 42%, var(--axo-border));
+}
+
+[data-axo-new] .axo-chat-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--axo-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--axo-accent) 55%, transparent);
+}
+
+[data-axo-new] .axo-chat-agent-body {
+  overflow-wrap: anywhere;
+}
+
+[data-axo-new] .axo-agent-answer-lead {
+  padding: 12px 13px;
+  border-top: 1px solid color-mix(in srgb, var(--axo-accent) 18%, var(--axo-border));
+  border-bottom: 1px solid color-mix(in srgb, var(--axo-accent) 18%, var(--axo-border));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--axo-accent-soft) 44%, transparent),
+    transparent 78%
+  );
+}
+
+[data-axo-new] .axo-agent-run-meta > summary,
+[data-axo-new] .axo-agent-tool-result > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--axo-text-faint);
+  font-size: 10.5px;
+  transition: color 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-run-meta > summary:hover,
+[data-axo-new] .axo-agent-tool-result > summary:hover {
+  color: var(--axo-text);
+}
+
+[data-axo-new] .axo-agent-empty {
+  display: flex;
+  min-height: 250px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 20px 8px;
+}
+
+[data-axo-new] .axo-agent-quick-prompts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+[data-axo-new] .axo-agent-quick-prompts > button {
+  display: flex;
+  min-height: 44px;
+  cursor: pointer;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid var(--axo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--axo-surface-2) 62%, transparent);
+  color: var(--axo-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  transition:
+    border-color 180ms var(--axo-ease),
+    background-color 180ms var(--axo-ease),
+    color 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-quick-prompts > button:hover {
+  border-color: color-mix(in srgb, var(--axo-accent) 42%, var(--axo-border));
+  background: color-mix(in srgb, var(--axo-accent-soft) 52%, transparent);
+}
+
+[data-axo-new] .axo-agent-working-message {
+  display: grid;
+  gap: 12px;
+}
+
+[data-axo-new] .axo-agent-working-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+[data-axo-new] .axo-agent-work-disclosure {
+  border-top: 1px solid var(--axo-border);
+  border-bottom: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-agent-work-disclosure > summary {
+  display: flex;
+  min-height: 42px;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--axo-text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  transition: color 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-work-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+[data-axo-new] .axo-agent-work-disclosure > summary:hover {
+  color: var(--axo-text);
+}
+
+[data-axo-new] .axo-agent-work-disclosure > summary > span:last-child {
+  flex: none;
+  color: var(--axo-text-faint);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+[data-axo-new] .axo-agent-work-list {
+  display: grid;
+  gap: 0;
+  padding: 0 0 10px;
+}
+
+[data-axo-new] .axo-agent-work-step {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 0;
+}
+
+[data-axo-new] .axo-agent-work-step-icon {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  color: var(--axo-text-faint);
+}
+
+[data-axo-new] .axo-agent-work-step[data-state="done"] .axo-agent-work-step-icon,
+[data-axo-new] .axo-agent-work-step[data-state="active"] .axo-agent-work-step-icon {
+  color: var(--axo-accent);
+}
+
+[data-axo-new] .axo-agent-work-step[data-state="error"] .axo-agent-work-step-icon {
+  color: var(--axo-status-crit);
+}
+
+[data-axo-new] .axo-agent-tool-result > pre {
+  max-height: 160px;
+  margin-top: 5px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-left: 1px solid var(--axo-border-strong);
+  color: var(--axo-text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[data-axo-new] .axo-agent-reasoning {
+  padding: 3px 0 3px 11px;
+  border-left: 1px solid color-mix(in srgb, var(--axo-accent) 34%, var(--axo-border));
+}
+
+[data-axo-new] .axo-agent-completed-workflow {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-agent-completed-workflow-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--axo-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+[data-axo-new] .axo-agent-clarification,
+[data-axo-new] .axo-agent-clarification-readonly {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--axo-accent) 38%, var(--axo-border));
+  border-radius: 15px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--axo-accent-soft) 58%, transparent),
+    color-mix(in srgb, var(--axo-surface-2) 74%, transparent)
+  );
+}
+
+[data-axo-new] .axo-agent-clarification-readonly,
+[data-axo-new] .axo-agent-clarification-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--axo-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+[data-axo-new] .axo-agent-clarification-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+[data-axo-new] .axo-agent-clarification-option {
+  display: flex;
+  min-height: 48px;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--axo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--axo-surface) 78%, transparent);
+  text-align: left;
+  transition:
+    border-color 180ms var(--axo-ease),
+    background-color 180ms var(--axo-ease),
+    opacity 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-clarification-option:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--axo-accent) 68%, var(--axo-border));
+  background: color-mix(in srgb, var(--axo-accent-soft) 72%, var(--axo-surface));
+}
+
+[data-axo-new] .axo-agent-clarification-option:disabled,
+[data-axo-new] .axo-agent-clarification-send:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+[data-axo-new] .axo-agent-clarification-form {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+[data-axo-new] .axo-agent-clarification-field {
+  display: flex;
+  min-height: 46px;
+  overflow: hidden;
+  border: 1px solid var(--axo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--axo-surface) 82%, transparent);
+  transition:
+    border-color 180ms var(--axo-ease),
+    box-shadow 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-clarification-field:focus-within {
+  border-color: color-mix(in srgb, var(--axo-accent) 72%, var(--axo-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--axo-accent-soft) 76%, transparent);
+}
+
+[data-axo-new] .axo-agent-clarification-send {
+  display: inline-flex;
+  width: 46px;
+  min-height: 46px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-left: 1px solid var(--axo-border);
+  background: var(--axo-accent);
+  color: var(--axo-accent-text);
+  transition:
+    background-color 180ms var(--axo-ease),
+    opacity 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-clarification-send:hover:not(:disabled) {
+  background: var(--axo-accent-hover);
+}
+
+[data-axo-new] .axo-agent-clarification-sent {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--axo-text-muted);
+  font-size: 11.5px;
+}
+
+[data-axo-new] .axo-agent-transport-notice {
+  padding: 8px 0 8px 11px;
+  border-left: 2px solid var(--axo-status-warn);
+  color: var(--axo-text-muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* Structured controls inside a turn use the window container, not viewport
+   breakpoints. Resizing the desktop window therefore reflows the content
+   instead of squeezing a desktop grid into a narrow panel. */
+[data-axo-new] .axo-canvas-flow {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-axo-new] .axo-canvas-arrow {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-axo-new] .axo-canvas-steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+[data-axo-new] .axo-guided-request {
+  padding: 12px 0 12px 13px;
+  border-left: 2px solid color-mix(in srgb, var(--axo-accent) 42%, var(--axo-border));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--axo-accent-soft) 32%, transparent),
+    transparent 72%
+  );
+}
+
+[data-axo-new] .axo-guided-turn {
+  display: grid;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+[data-axo-new] .axo-log-source-grid,
+[data-axo-new] .axo-wizard-name-grid,
+[data-axo-new] .axo-wizard-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+[data-axo-new] .axo-log-source-grid {
+  align-items: end;
+}
+
+[data-axo-new] .axo-wizard-wide-field {
+  display: block;
+}
+
+[data-axo-new] .axo-wizard-actions,
+[data-axo-new] .axo-node-selection-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-axo-new] .axo-wizard-actions {
+  margin-top: 12px;
+}
+
+[data-axo-new] .axo-node-selection-row > button,
+[data-axo-new] .axo-wizard-actions > button,
+[data-axo-new] .axo-log-source-grid > button {
+  width: 100%;
+}
+
+[data-axo-new] .axo-proposed-action {
+  padding: 13px 0;
+  border-top: 1px solid var(--axo-border);
+  border-bottom: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-proposed-action[data-policy="denied"] {
+  padding-left: 12px;
+  border-left: 2px solid var(--axo-status-crit);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--axo-status-crit-soft) 48%, transparent),
+    transparent 76%
+  );
+}
+
+[data-axo-new] .axo-proposed-action[data-approval="pending"] {
+  padding-left: 12px;
+  border-left: 2px solid var(--axo-status-warn);
+}
+
+[data-axo-new] .axo-proposed-action-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+[data-axo-new] .axo-proposed-action-blocked {
+  width: 100%;
+  padding: 8px 10px;
+  border-left: 2px solid var(--axo-status-warn);
+  color: var(--axo-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+[data-axo-new] .axo-proposed-action-actions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+[data-axo-new] .axo-proposed-action-actions > button {
+  width: 100%;
+}
+
+[data-axo-new] .axo-result-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px 12px;
+  color: var(--axo-text-muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+[data-axo-new] .axo-result-meta-wide {
+  min-width: 0;
+}
+
+[data-axo-new] .axo-post-action-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 0 12px 12px;
+  border-left: 2px solid var(--axo-accent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--axo-accent-soft) 42%, transparent),
+    transparent 78%
+  );
+}
+
+[data-axo-new] .axo-post-action-hint > button {
+  width: 100%;
+}
+
+[data-axo-new] .axo-plan-branch,
+[data-axo-new] .axo-plan-orphans {
+  width: 100%;
+  cursor: pointer;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--axo-border);
+  background: transparent;
+  color: var(--axo-text);
+  text-align: left;
+  transition:
+    border-color 180ms var(--axo-ease),
+    background-color 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-plan-branch:first-child {
+  border-top: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-plan-branch:hover,
+[data-axo-new] .axo-plan-orphans:hover {
+  border-color: color-mix(in srgb, var(--axo-accent) 52%, var(--axo-border));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--axo-accent-soft) 30%, transparent),
+    transparent 76%
+  );
+}
+
+[data-axo-new] .axo-plan-orphans {
+  font-size: 12px;
+  color: var(--axo-text-muted);
+}
+
+[data-axo-new] .axo-object-selection {
+  margin-block: 12px;
+  padding: 11px 0 11px 12px;
+  border-left: 1px solid color-mix(in srgb, var(--axo-accent) 42%, var(--axo-border));
+}
+
+/* Composer: access is explicit, voice control is intentionally absent. */
+[data-axo-new] .axo-agent-composer {
+  display: grid;
+  gap: 9px;
+}
+
+[data-axo-new] .axo-agent-composer-field {
+  overflow: hidden;
+  border: 1px solid var(--axo-border);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--axo-surface) 68%, transparent);
+  transition:
+    border-color 180ms var(--axo-ease),
+    box-shadow 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-composer-field:focus-within {
+  border-color: color-mix(in srgb, var(--axo-accent) 72%, var(--axo-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--axo-accent-soft) 76%, transparent);
+}
+
+[data-axo-new] .axo-agent-send-button {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--axo-accent);
+  color: var(--axo-accent-text);
+  transition:
+    background-color 180ms var(--axo-ease),
+    opacity 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-send-button:hover:not(:disabled) {
+  background: var(--axo-accent-hover);
+}
+
+[data-axo-new] .axo-agent-send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+[data-axo-new] .axo-agent-access-control {
+  min-width: 0;
+}
+
+[data-axo-new] .axo-agent-access-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-axo-new] .axo-agent-access-label {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  color: var(--axo-text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+[data-axo-new] .axo-agent-access-segments {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--axo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--axo-surface-2) 72%, transparent);
+}
+
+[data-axo-new] .axo-agent-access-option {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 38px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--axo-text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color 180ms var(--axo-ease),
+    color 180ms var(--axo-ease);
+}
+
+[data-axo-new] .axo-agent-access-option:disabled {
+  cursor: wait;
+  opacity: 0.48;
+}
+
+[data-axo-new] .axo-agent-access-option:not(:disabled):hover {
+  color: var(--axo-text);
+}
+
+[data-axo-new] .axo-agent-access-option[data-active="true"] {
+  color: var(--axo-text);
+  background: var(--axo-surface);
+  box-shadow: var(--axo-shadow-sm);
+}
+
+[data-axo-new] .axo-agent-access-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--axo-status-ok);
+}
+
+[data-axo-new] .axo-agent-access-option[data-mode="risky_actions"] .axo-agent-access-dot {
+  background: var(--axo-status-warn);
+}
+
+[data-axo-new] .axo-agent-access-option[data-mode="full_access"] .axo-agent-access-dot {
+  background: var(--axo-status-crit);
+}
+
+/* Inline permission: one continuous decision block, no nested card stack. */
+[data-axo-new] .axo-inline-approval {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--axo-status-warn) 42%, var(--axo-border));
+  border-left-width: 3px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--axo-status-warn-soft) 42%, var(--axo-surface));
+}
+
+[data-axo-new] .axo-inline-approval[data-risk="high"],
+[data-axo-new] .axo-inline-approval[data-risk="critical"],
+[data-axo-new] .axo-inline-approval[data-risk="destructive"] {
+  border-color: color-mix(in srgb, var(--axo-status-crit) 48%, var(--axo-border));
+  background: color-mix(in srgb, var(--axo-status-crit-soft) 42%, var(--axo-surface));
+}
+
+[data-axo-new] .axo-inline-approval-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--axo-text) 8%, transparent);
+}
+
+[data-axo-new] .axo-inline-approval-body {
+  padding: 13px;
+}
+
+[data-axo-new] .axo-inline-approval-command {
+  margin-top: 11px;
+  overflow-x: auto;
+  padding: 9px 10px;
+  border-left: 2px solid var(--axo-status-crit);
+  background: color-mix(in srgb, var(--axo-surface-2) 76%, transparent);
+  color: var(--axo-text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[data-axo-new] .axo-inline-approval-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+  border-top: 1px solid var(--axo-border);
+  border-bottom: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-inline-approval-meta > div {
+  min-width: 0;
+  padding: 9px 8px 9px 0;
+}
+
+[data-axo-new] .axo-inline-approval-meta > div + div {
+  padding-left: 10px;
+  border-left: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-inline-approval-meta dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--axo-text-faint);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-axo-new] .axo-inline-approval-meta dd {
+  margin-top: 4px;
+  color: var(--axo-text);
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+[data-axo-new] .axo-inline-approval-impact {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+[data-axo-new] .axo-inline-approval-impact > div {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--axo-text-muted);
+}
+
+[data-axo-new] .axo-inline-approval-impact > div > svg {
+  margin-top: 2px;
+  color: var(--axo-accent);
+}
+
+[data-axo-new] .axo-inline-approval-impact > div[data-kind="risk"] > svg {
+  color: var(--axo-status-warn);
+}
+
+[data-axo-new] .axo-inline-approval[data-risk="high"] .axo-inline-approval-impact > div[data-kind="risk"] > svg,
+[data-axo-new] .axo-inline-approval[data-risk="critical"] .axo-inline-approval-impact > div[data-kind="risk"] > svg,
+[data-axo-new] .axo-inline-approval[data-risk="destructive"] .axo-inline-approval-impact > div[data-kind="risk"] > svg {
+  color: var(--axo-status-crit);
+}
+
+[data-axo-new] .axo-inline-approval-impact strong,
+[data-axo-new] .axo-inline-approval-impact span {
+  display: block;
+}
+
+[data-axo-new] .axo-inline-approval-impact strong {
+  color: var(--axo-text);
+  font-size: 10.5px;
+}
+
+[data-axo-new] .axo-inline-approval-impact span {
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+[data-axo-new] .axo-inline-approval-scope {
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-inline-approval-scope > summary {
+  min-height: 32px;
+  cursor: pointer;
+  color: var(--axo-text);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+[data-axo-new] .axo-inline-approval-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid var(--axo-border);
+}
+
+[data-axo-new] .axo-inline-approval[data-decision="rejected"] {
+  border-color: var(--axo-border-strong);
+  background: color-mix(in srgb, var(--axo-surface-3) 72%, var(--axo-surface));
+}
+
+@container axosun-window (max-width: 430px) {
+  [data-axo-new] .axo-chat-user-bubble {
+    max-width: 94%;
+  }
+
+  [data-axo-new] .axo-chat-message-agent {
+    padding-left: 10px;
+  }
+
+  [data-axo-new] .axo-agent-empty {
+    min-height: 210px;
+    padding-inline: 0;
+  }
+
+  [data-axo-new] .axo-agent-access-row {
+    display: block;
+  }
+
+  [data-axo-new] .axo-agent-access-label {
+    margin-bottom: 6px;
+  }
+
+  [data-axo-new] .axo-agent-access-option {
+    min-height: 44px;
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+
+  [data-axo-new] .axo-inline-approval-meta {
+    grid-template-columns: 1fr;
+  }
+
+  [data-axo-new] .axo-inline-approval-meta > div + div {
+    padding-left: 0;
+    border-top: 1px solid var(--axo-border);
+    border-left: 0;
+  }
+}
+
+@container axosun-window (min-width: 660px) {
+  [data-axo-new] .axo-canvas-flow {
+    grid-template-columns:
+      minmax(0, 1fr) 48px minmax(0, 1fr) 48px minmax(0, 1fr);
+  }
+
+  [data-axo-new] .axo-canvas-arrow {
+    display: flex;
+  }
+
+  [data-axo-new] .axo-canvas-steps,
+  [data-axo-new] .axo-agent-quick-prompts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-axo-new] .axo-log-source-grid {
+    grid-template-columns: minmax(0, 1fr) 140px auto;
+  }
+
+  [data-axo-new] .axo-wizard-name-grid,
+  [data-axo-new] .axo-wizard-choice-grid,
+  [data-axo-new] .axo-result-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-axo-new] .axo-wizard-wide-field,
+  [data-axo-new] .axo-result-meta-wide {
+    grid-column: 1 / -1;
+  }
+
+  [data-axo-new] .axo-wizard-actions,
+  [data-axo-new] .axo-node-selection-row,
+  [data-axo-new] .axo-proposed-action-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  [data-axo-new] .axo-wizard-actions,
+  [data-axo-new] .axo-node-selection-row {
+    align-items: center;
+  }
+
+  [data-axo-new] .axo-node-selection-row > button,
+  [data-axo-new] .axo-wizard-actions > button,
+  [data-axo-new] .axo-log-source-grid > button,
+  [data-axo-new] .axo-post-action-hint > button {
+    width: auto;
+  }
+
+  [data-axo-new] .axo-proposed-action-blocked {
+    width: auto;
+    max-width: 180px;
+  }
+
+  [data-axo-new] .axo-proposed-action-actions {
+    display: flex;
+    width: auto;
+    flex: none;
+  }
+
+  [data-axo-new] .axo-proposed-action-actions > button {
+    width: auto;
+  }
+
+  [data-axo-new] .axo-inline-approval-impact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  [data-axo-new] .axo-inline-approval-impact > div + div {
+    padding-left: 14px;
+    border-left: 1px solid var(--axo-border);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-axo-new] .axo-agent-window,
+  [data-axo-new] .axo-agent-window-footer {
+    background: var(--axo-surface);
+  }
+}
+
+/* ────────── Login page background ──────────
+   Три кадра одной сцены под три пропорции экрана. Десктопный ландшафт,
+   растянутый на портретный телефон, обрезается по бокам так, что от
+   аксолотля остаётся кусок морды у правого края — поэтому у телефона и
+   планшета свои вертикальные кадры.
+
+   Затемнение тоже разное: на телефоне карточка входа занимает верх экрана,
+   а аксолотль лежит под ней, и его нужно оставить читаемым — плотная
+   вуаль десктопа гасила бы его целиком. */
+.axo-login-bg {
+  background: linear-gradient(rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.42)),
+    var(--asset-login-bg-dark-mobile) center bottom / cover no-repeat !important;
+}
+
+@media (min-width: 640px) {
+  .axo-login-bg {
+    background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)),
+      var(--asset-login-bg-dark-tablet-v2) center / cover no-repeat !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .axo-login-bg {
+    background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)),
+      var(--asset-login-bg) center / cover no-repeat !important;
+  }
+}
+
+/* ────────── Анимации ────────── */
+@keyframes axo-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes axo-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes axo-pulse-ok {
+  0%, 100% { box-shadow: 0 0 0 0 var(--axo-status-ok-soft); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+@keyframes axo-pulse-crit {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(209, 75, 75, 0.45); }
+  50% { box-shadow: 0 0 0 8px rgba(209, 75, 75, 0); }
+}
+
+@keyframes axo-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+@keyframes axo-agent-exterior-breathe {
+  0%, 100% {
+    opacity: 0.17;
+    transform: scale(0.992);
+  }
+  50% {
+    opacity: 0.36;
+    transform: scale(1.01);
+  }
+}
+
+[data-axo-new] .axo-pulse-ok { animation: axo-pulse-ok 2.4s var(--axo-ease) infinite; }
+[data-axo-new] .axo-pulse-crit { animation: axo-pulse-crit 1.6s var(--axo-ease) infinite; }
+
+[data-axo-new][data-axo-mode="light"] .axo-health-hero {
+  background: var(--axo-hero-gradient);
+  border-color: rgba(26, 19, 19, 0.08);
+  box-shadow:
+    0 16px 38px rgba(26, 19, 19, 0.10),
+    0 2px 8px rgba(26, 19, 19, 0.05);
+}
+
+[data-axo-new][data-axo-mode="light"] .axo-health-hero-glow {
+  opacity: 0.18;
+}
+
+[data-axo-new][data-axo-mode="light"] .axo-health-hero-stat {
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-axo-new][data-axo-mode="light"] .axo-health-hero-link {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-axo-new][data-axo-mode="light"] .axo-health-hero-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-axo-new] .axo-skeleton {
+  background: linear-gradient(90deg,
+    var(--axo-surface-2) 0%,
+    var(--axo-surface-3) 50%,
+    var(--axo-surface-2) 100%);
+  background-size: 800px 100%;
+  animation: axo-shimmer 1.4s linear infinite;
+  border-radius: var(--axo-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-axo-new] *,
+  [data-axo-new] *::before,
+  [data-axo-new] *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  [data-axo-new] .axo-pulse-ok,
+  [data-axo-new] .axo-pulse-crit { animation: none !important; }
+  [data-axo-new][data-axo-activity="working"] .axo-agent-window-glow {
+    animation: none !important;
+    opacity: 0.28;
+    transform: scale(1);
+  }
+
+  /* Keep async state visible without continuous rotational motion. This needs
+     extra specificity because the reduced-motion selector above is scoped to
+     the entire new UI. */
+  [data-axo-new] .animate-spin {
+    animation-name: pulse-soft !important;
+    animation-duration: 1.6s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@media (max-width: 639px) {
+  [data-axo-new] .axo-agent-window-shell {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+    min-height: min(420px, calc(100dvh - 16px));
+    height: min(620px, 72dvh);
+  }
+
+  [data-axo-new] .axo-agent-window-glow {
+    inset: -2px;
+    border-radius: 24px;
+    box-shadow:
+      0 0 18px 3px color-mix(in srgb, var(--axo-accent) 27%, transparent),
+      0 0 34px 7px color-mix(in srgb, var(--axo-accent) 11%, transparent);
+  }
+
+  [data-axo-new] .axo-agent-window {
+    backdrop-filter: blur(16px) saturate(1.08);
+    -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  }
+
+  [data-axo-new] .axo-agent-window-resize-handle {
+    display: none;
+  }
+}
+
+/* ────────── Утилиты ────────── */
+[data-axo-new] .axo-card {
+  background: var(--axo-surface);
+  border: 1px solid var(--axo-border);
+  border-radius: var(--axo-radius-xl);
+  box-shadow: var(--axo-shadow-sm);
+}
+
+[data-axo-new] .axo-card-elevated {
+  background: var(--axo-surface);
+  border: 1px solid var(--axo-border);
+  border-radius: var(--axo-radius-xl);
+  box-shadow: var(--axo-shadow-md);
+}
+
+[data-axo-new] .axo-card-flat {
+  background: var(--axo-surface-2);
+  border: 1px solid var(--axo-border);
+  border-radius: var(--axo-radius-lg);
+}
+
+[data-axo-new] .axo-divider {
+  height: 1px;
+  background: var(--axo-border);
+  width: 100%;
+}
+
+/* Мягкая подсветка для активных состояний */
+[data-axo-new] .axo-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--axo-shadow-glow);
+}
+
+/* ────────── Мобильные утилиты ──────────
+   Именованные классы вместо россыпи `max-sm:` в разметке: правила ниже
+   применяются либо только к тач-устройствам, либо только к узким экранам,
+   поэтому десктопный рендер не затрагивают. */
+
+/* Широкий блок (таблица, ряд вкладок, лента чипов) уезжает не за край
+   экрана, а внутрь собственного скролла — с инерцией на iOS и без
+   «протекания» жеста на историю браузера. */
+[data-axo-new] .axo-scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* То же самое, но полоса прокрутки спрятана: для рядов вкладок, где она
+   мешает читать сами вкладки. */
+[data-axo-new] .axo-scroll-x-hidden {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+[data-axo-new] .axo-scroll-x-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Мелкая иконочная кнопка (h-7/h-8) на пальце промахивается. Псевдоэлемент
+   расширяет зону нажатия до 44px, ничего не сдвигая в раскладке; на мыши
+   правило не действует вовсе. */
+@media (pointer: coarse) {
+  /* Позиционирование навязывается только элементам, у которых его нет:
+     кнопки-крестики внутри полей уже absolute, и relative выбивал их из
+     своего угла прямо в поток. Псевдоэлементу ниже нужен любой
+     позиционированный предок — своё absolute подходит не хуже. */
+  [data-axo-new] .axo-hit:not(.absolute):not(.fixed):not(.sticky) {
+    position: relative;
+  }
+  [data-axo-new] .axo-hit::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Липкая шапка/подвал внутри прокручиваемого листа. */
+[data-axo-new] .axo-sheet-grab {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--axo-border-strong);
+}
+
+/* Блок, который нельзя перенести (широкая таблица), внутри .axo-scroll-x
+   должен сохранять минимальную ширину — иначе он схлопнется. */
+@media (max-width: 640px) {
+  [data-axo-new] .axo-scroll-x > table,
+  [data-axo-new] .axo-scroll-x-hidden > table {
+    min-width: max-content;
+  }
+}
+
+/* Secondary Flow Studio labels expand on hover; touch keeps labels visible. */
+[data-axo-new] .axo-flow-section-label {
+  display: grid;
+  grid-template-columns: 1fr;
+  white-space: nowrap;
+}
+[data-axo-new] .axo-flow-section-label > span {
+  min-width: 0;
+  overflow: hidden;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-axo-new] .axo-flow-section-tab[data-reveal-label] { gap: 0; }
+  [data-axo-new] .axo-flow-section-tab[data-reveal-label] .axo-flow-section-label {
+    grid-template-columns: 0fr;
+    opacity: 0;
+    margin-inline-start: 0;
+    transition: grid-template-columns 240ms ease, opacity 180ms ease, margin-inline-start 240ms ease;
+  }
+  [data-axo-new] .axo-flow-section-tab[data-reveal-label]:is(:hover, :focus-visible) .axo-flow-section-label {
+    grid-template-columns: 1fr;
+    opacity: 1;
+    margin-inline-start: 0.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-axo-new] .axo-flow-section-tab .axo-flow-section-label { transition: none; }
+}

@@ -1,0 +1,372 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #020617;
+  --color-surface: #0F172A;
+  --color-surface-alt: #1E293B;
+  --color-accent: #FC9CA1;
+  --color-accent-hover: #FFB4B8;
+  --color-text: #F8FAFC;
+  --color-text-muted: #94A3B8;
+  --color-border: #334155;
+  --color-glow: rgba(252, 156, 161, 0.08);
+
+  --font-sans: "Google Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Google Sans Code", ui-monospace, monospace;
+
+  --radius-card: 0.5rem;
+  --radius-btn: 0.375rem;
+  --radius-input: 0.375rem;
+  --radius-panel: 0rem;
+  --shadow-card: none;
+  --shadow-float: none;
+  --shadow-panel: none;
+  --panel-gap: 0rem;
+}
+
+/* Light mode */
+[data-mode="light"] {
+  --color-bg: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F1F5F9;
+  --color-accent: #C82C3C;
+  --color-accent-hover: #AC2433;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-border: #E2E8F0;
+  --color-glow: rgba(200, 44, 60, 0.06);
+  --color-btn-text: #FFFFFF;
+}
+
+[data-mode="dark"] {
+  --color-btn-text: var(--color-bg);
+}
+
+/* Cloud style — soft rounded, gentle shadows, floating panels */
+[data-style="cloud"] {
+  --radius-card: 1.25rem;
+  --radius-btn: 0.75rem;
+  --radius-input: 0.75rem;
+  --radius-panel: 1.5rem;
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.15);
+  --panel-gap: 0.75rem;
+}
+
+[data-style="sharp"] {
+  --radius-panel: 0rem;
+  --shadow-panel: none;
+  --panel-gap: 0rem;
+}
+
+[data-mode="light"][data-style="cloud"] {
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.axo-brand-wordmark {
+  font-family: "Cause", "Avenir Next", var(--font-sans), sans-serif;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fix button text visibility in light mode — text-bg on accent buttons must be white */
+[data-mode="light"] .bg-accent,
+[data-mode="light"] .bg-accent-hover,
+[data-mode="light"] .hover\:bg-accent-hover:hover {
+  color: #FFFFFF;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-alt) transparent;
+}
+
+/* === МОБИЛЬНАЯ БАЗА ===
+   Всё в этом блоке либо нейтрально для мыши, либо ограничено медиазапросом
+   по ширине/типу указателя, поэтому раскладка на десктопе не меняется.
+
+   Правила намеренно живут вне @layer: слоистые стили Tailwind проигрывают
+   неслоистым независимо от специфичности, и `font-size: 16px` ниже обязан
+   перебивать text-sm/text-[13px] на полях ввода. */
+
+html {
+  /* Safari на iOS иначе сам увеличивает шрифт в альбомной ориентации. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Двойной тап по контролу больше не масштабирует страницу и не добавляет
+   300 мс задержки перед кликом. Щипок двумя пальцами продолжает работать —
+   manipulation отключает только double-tap-to-zoom. */
+button,
+a,
+label,
+summary,
+select,
+input,
+textarea,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="menuitemradio"],
+[role="option"],
+[role="switch"],
+[role="checkbox"],
+[role="radio"] {
+  touch-action: manipulation;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS Safari зумит вьюпорт при фокусе на поле с кеглем меньше 16px и обратно
+   уже не отъезжает. Обойти это можно только самим кеглем, поэтому на узких
+   экранах поля выпадают из шкалы дизайн-системы — осознанный размен. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Панель не должна ехать вбок ни на одной странице. `clip`, а не `hidden`:
+     он не создаёт скролл-контейнер, поэтому position: sticky остаётся живым. */
+  body {
+    overflow-x: clip;
+  }
+
+  /* Длинные идентификаторы, ключи и URL переносятся вместо того, чтобы
+     растягивать карточку за край экрана. */
+  body {
+    overflow-wrap: break-word;
+  }
+}
+
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-text);
+  caret-color: var(--color-text);
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+}
+
+/* === ANIMATIONS === */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* === FLOW CANVAS EDGE AFFORDANCES === */
+
+/* The three dots that appear on a hovered edge bounce in sequence. Each dot
+   carries its own animation-delay, so the stagger lives in the markup. */
+@keyframes axo-edge-dot {
+  0%, 55%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translateY(-2.5px);
+    opacity: 1;
+  }
+}
+
+/* The dots button itself, and the action menu it opens. Positioning lives on
+   the wrapper set by React Flow's EdgeLabelRenderer, so these only ever
+   transform an inner element. */
+@keyframes axo-edge-pop {
+  from {
+    transform: scale(0.72);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes axo-edge-menu-in {
+  from {
+    transform: translateY(-4px) scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes axo-edge-tip-in {
+  from {
+    transform: translateY(4px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axo-edge-dot,
+  .axo-edge-pop,
+  .axo-edge-menu,
+  .axo-edge-tip {
+    animation: none !important;
+  }
+}
+
+/* Numeric fields keep their semantics and mobile keyboard without exposing
+   browser-specific spinner chrome that does not match the Axottle controls. */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Modal backdrop blur animation */
+@keyframes backdrop-in {
+  from {
+    backdrop-filter: blur(0px);
+  }
+  to {
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes backdrop-out {
+  from {
+    backdrop-filter: blur(4px);
+  }
+  to {
+    backdrop-filter: blur(0px);
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Loading indicators must keep communicating that work is still in progress.
+     Use a low-motion opacity pulse instead of leaving spinners frozen after the
+     blanket reduced-motion rule completes their first iteration. */
+  .animate-spin {
+    animation-name: pulse-soft !important;
+    animation-duration: 1.6s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+  }
+}

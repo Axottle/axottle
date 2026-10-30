@@ -1,0 +1,12 @@
+/axottle
+*.test
+__pycache__/
+/web/admin/node_modules/
+/web/admin/.next/
+/web/admin/out/
+/web/admin/*.tsbuildinfo
+/web/admin/next-env.d.ts
+/web/admin/lib/generated/
+/web/admin/public/_assets/
+/internal/coreui/static/*
+!/internal/coreui/static/.gitkeep

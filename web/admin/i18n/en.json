@@ -1,0 +1,17 @@
+{
+  "common": {
+    "close": "Close",
+    "retry": "Retry"
+  },
+  "select": {
+    "noMatches": "No matches found",
+    "noOptions": "No options",
+    "placeholder": "Select...",
+    "refineSearch": "Refine your search to see the remaining options.",
+    "search": "Search…"
+  },
+  "state": {
+    "loadFailedTitle": "Failed to load",
+    "loadingData": "Loading data…"
+  }
+}
