@@ -72,6 +72,16 @@ Connect external clients and automate operations through scoped permissions. The
 3. **Check and apply.** Review the configuration, apply it and inspect the result.
 4. **Operate from one panel.** Watch health, configure recovery, handle support requests and publish service status.
 
+## Install
+
+On a Linux server (amd64 or arm64) with `curl` and `sudo`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | sudo bash
+```
+
+Currently installs **v2.0.0-beta.1**. The interactive installer downloads the matching core and engine, verifies their signatures and sets up the panel. Both release repositories must be public for installation without a token; private installations use the instructions in the [release notes](https://github.com/Axottle/axottle/releases/tag/v2.0.0-beta.1).
+
 ## Documentation
 
 **[Read the Axottle documentation →](https://docs.axottle.com)**
@@ -83,7 +93,7 @@ Installation, configuration, operator guides and troubleshooting are available i
 <details>
 <summary><strong>Building from source</strong></summary>
 
-This repository contains the source available for the shared foundation of Axottle. Operational modules are supplied separately; building this checkout alone does not provide all of the product features described above. The split distribution is still being prepared.
+This repository contains the source available for the shared foundation of Axottle. Operational modules are supplied separately; building this checkout alone does not provide all of the product features described above. The installer downloads the complete distribution.
 
 Use Go from `go.mod`, Node.js from `web/admin/.nvmrc`, npm and Python 3.
 
