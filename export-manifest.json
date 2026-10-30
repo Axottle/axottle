@@ -5,7 +5,7 @@
     "README.md": "a67adfef3cd05baf7e9d88d309c862db48a57ffb73b54e618607233bef2bfcfc",
     "README.ru.md": "2d4f78011df96d1bf679941de7936513d38aa965d9a4790ccc7fa01751ae8d43",
     "cmd/axottle-core/main.go": "40ba2013dc0776b1484668b6bb0b06c367e093c627eece2f6398179261d94d6f",
-    "docs/assets/readme-banner.svg": "bb8db5cacf142d47bccb83d1ecd4ea15ef3c6f875edbcf9642e27734cad12e81",
+    "docs/assets/readme-banner.svg": "2d21203d4ccc0f99247417c636f150ae3c338220e5df1393f54542dfb339f644",
     "go.mod": "4a1ab0eb4866c11b9c11da1656495c99f51d092025457913bda8c1e0304a528c",
     "go.sum": "45af2c8f5cef22bdb8a44c322a7ff1c990630accb3120bdbcdd36ec478274f70",
     "internal/audit/audit.go": "2301925ae1e7ceb43cfd79821fa1310a7d46ec263ad63b4138517572d7d1a84b",
