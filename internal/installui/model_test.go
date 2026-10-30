@@ -120,3 +120,69 @@ func TestWindowBoundsWithLongStatusAndSmallTerminal(t *testing.T) {
 		}
 	}
 }
+
+func TestCompletionContainsBothPanelsAndRevealsPasswordOnlyOnRequest(t *testing.T) {
+	m := newModel(nil, &bytes.Buffer{}, func() {}, "", "ru")
+	m.width, m.height = 100, 40
+	m.Update(event{kind: "result", fields: []string{"https://panel.example/setup", "false", "yes", "https://remna.example", "admin", "generated-fixture-password", "/etc/axottle/axottle.env"}})
+	m.Update(exited{})
+	view := ansi.Strip(m.View())
+	for _, expected := range []string{"01  Axottle", "02  Remnawave", "https://remna.example", "admin", "/etc/axottle/axottle.env", "P — показать пароль"} {
+		if !strings.Contains(view, expected) {
+			t.Fatalf("Missing %q in %s", expected, view)
+		}
+	}
+	if strings.Contains(view, "generated-fixture-password") {
+		t.Fatal("password visible before request")
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
+	if !strings.Contains(m.View(), "generated-fixture-password") {
+		t.Fatal("password not revealed")
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("з")})
+	if strings.Contains(m.View(), "generated-fixture-password") {
+		t.Fatal("password not hidden with Russian keyboard")
+	}
+}
+
+func TestCompletionScrollsAfterBackendExitAndFitsSmallWindows(t *testing.T) {
+	for _, size := range [][2]int{{80, 24}, {48, 20}, {120, 40}} {
+		m := newModel(nil, &bytes.Buffer{}, func() {}, "", "en")
+		m.width, m.height = size[0], size[1]
+		m.Update(event{kind: "result", fields: []string{"https://panel.example/setup", "false", "partial", "https://remna.example", "admin", strings.Repeat("x", 100), "/etc/axottle/axottle.env"}})
+		m.Update(exited{})
+		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
+		initial := m.View()
+		m.Update(tea.KeyMsg{Type: tea.KeyPgDown})
+		if m.scroll != 1 {
+			t.Fatal("completed screen cannot scroll")
+		}
+		if size[1] == 20 && initial == m.View() {
+			t.Fatal("scroll did not reveal clipped content")
+		}
+		lines := strings.Split(m.View(), "\n")
+		if len(lines) > m.height {
+			t.Fatal("completion exceeds height")
+		}
+		for _, line := range lines {
+			if ansi.StringWidth(line) > m.width {
+				t.Fatal("completion exceeds width")
+			}
+		}
+	}
+}
+
+func TestPreviewAndPanelOnlyCompletionDoNotShowRemnawaveCredentials(t *testing.T) {
+	for _, fields := range [][]string{
+		{"https://panel.example/setup", "false"},
+		{"https://panel.example/setup", "true", "yes", "https://remna.example", "admin", "fixture-password", "/etc/axottle/axottle.env"},
+	} {
+		m := newModel(nil, &bytes.Buffer{}, func() {}, "", "en")
+		m.Update(event{kind: "result", fields: fields})
+		m.Update(exited{})
+		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
+		if view := m.View(); strings.Contains(view, "fixture-password") || strings.Contains(view, "02  Remnawave") {
+			t.Fatal("unexpected credentials")
+		}
+	}
+}

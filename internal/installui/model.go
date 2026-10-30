@@ -18,25 +18,27 @@ import (
 type tick time.Time
 
 type model struct {
-	stream                         <-chan tea.Msg
-	answers                        io.Writer
-	cancel                         func()
-	logPath, lang                  string
-	width, height                  int
-	mode, title, hint, link, stage string
-	options                        []string
-	selected                       int
-	input                          []rune
-	cursor                         int
-	secret                         bool
-	entries                        []string
-	result                         string
-	err                            error
-	finished, stopping             bool
-	preview                        bool
-	started                        time.Time
-	frame                          int
-	scroll                         int
+	stream                                              <-chan tea.Msg
+	answers                                             io.Writer
+	cancel                                              func()
+	logPath, lang                                       string
+	width, height                                       int
+	mode, title, hint, link, stage                      string
+	options                                             []string
+	selected                                            int
+	input                                               []rune
+	cursor                                              int
+	secret                                              bool
+	entries                                             []string
+	result                                              string
+	rwState, rwURL, rwUser, rwPassword, credentialsPath string
+	revealPassword                                      bool
+	err                                                 error
+	finished, stopping                                  bool
+	preview                                             bool
+	started                                             time.Time
+	frame                                               int
+	scroll                                              int
 }
 
 func language(args []string) string {
@@ -155,6 +157,13 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case "result":
 			m.result = plain(field(msg, 0))
 			m.preview = field(msg, 1) == "true"
+			m.rwState, m.rwURL = plain(field(msg, 2)), plain(field(msg, 3))
+			m.rwUser, m.rwPassword = plain(field(msg, 4)), plain(field(msg, 5))
+			m.credentialsPath = plain(field(msg, 6))
+			m.revealPassword = false
+			if m.preview {
+				m.rwState, m.rwURL, m.rwUser, m.rwPassword, m.credentialsPath = "", "", "", "", ""
+			}
 		case "error":
 			m.mode, m.title = "error", plain(field(msg, 0))
 		}
@@ -172,6 +181,18 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.finished {
+			switch msg.String() {
+			case "p", "P", "з", "З":
+				if m.mode == "done" && m.rwPassword != "" {
+					m.revealPassword = !m.revealPassword
+				}
+			case "down", "pgdown":
+				m.scroll++
+			case "up", "pgup":
+				m.scroll = max(0, m.scroll-1)
+			case "home":
+				m.scroll = 0
+			}
 			if msg.Type == tea.KeyEnter || msg.Type == tea.KeyEsc {
 				return m, tea.Quit
 			}
@@ -342,8 +363,41 @@ func (m *model) View() string {
 		body = append(body, accent.Render("› ")+m.inputView(width-3))
 		footer = m.tr("←→ Home End — курсор   Enter — продолжить", "←→ Home End edit   Enter continue   Ctrl+C stop")
 	case "done":
-		body = append(body, linkView(m.result, width))
+		title = "✓ " + m.title
+		hint = ""
+		body = append(body, accent.Bold(true).Render("01  Axottle"),
+			linkView(m.result, width),
+			muted.Render(ansi.Wrap(m.hint, width, "")))
+		if m.rwState != "" && m.rwState != "no" {
+			body = append(body, "", accent.Bold(true).Render("02  Remnawave"))
+			if m.rwURL != "" {
+				body = append(body, linkView(m.rwURL, width))
+			}
+			if m.rwState != "yes" {
+				body = append(body, ansi.Wrap(m.tr("Подключение требует проверки. Вход с сохранёнными данными не подтверждён.", "Connection needs attention. Sign-in with the saved credentials is not confirmed."), width, ""))
+			}
+			if m.rwUser != "" {
+				body = append(body, ansi.Wrap(m.tr("Логин:   ", "Username: ")+m.rwUser, width, ""))
+			}
+			if m.rwPassword != "" {
+				password := "••••••••••••"
+				if m.revealPassword {
+					password = m.rwPassword
+				}
+				body = append(body, ansi.Wrap(m.tr("Пароль:  ", "Password: ")+password, width, ""))
+			}
+			if m.credentialsPath != "" {
+				body = append(body, "", muted.Render(ansi.Wrap(m.tr("Доступ сохранён в ", "Credentials saved in ")+m.credentialsPath, width, "")))
+			}
+		}
 		footer = m.tr("Enter — закрыть", "Enter close")
+		if m.rwPassword != "" {
+			action := m.tr("P — показать пароль", "P show password")
+			if m.revealPassword {
+				action = m.tr("P — скрыть пароль", "P hide password")
+			}
+			footer = action + " · " + footer
+		}
 	case "error":
 		footer = m.tr("Enter — закрыть", "Enter close")
 	case "review":
@@ -367,9 +421,19 @@ func (m *model) View() string {
 			start = len(lines) - height
 		}
 		lines = lines[start : start+height]
-		footer += m.tr(" · PgUp/PgDn — текст", " · PgUp/PgDn scroll")
+		if m.mode == "done" {
+			footer = m.tr("↑↓ — текст · Enter — закрыть", "↑↓ scroll · Enter close")
+			if m.rwPassword != "" {
+				footer = m.tr("P — пароль · ", "P password · ") + footer
+			}
+		} else {
+			footer += m.tr(" · PgUp/PgDn — текст", " · PgUp/PgDn scroll")
+		}
 	}
 	content = strings.Join(lines, "\n")
+	if m.mode == "done" {
+		height = min(height, len(lines))
+	}
 	content = lipgloss.NewStyle().Width(width).Height(height).Render(content)
 	header := accent.Bold(true).Render("Axottle") + muted.Render(m.tr("  /  Установка", "  /  Installation"))
 	card := lipgloss.NewStyle().Width(width).Padding(1, 2).Border(lipgloss.RoundedBorder()).
