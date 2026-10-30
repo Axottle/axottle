@@ -13,33 +13,57 @@ It brings the operational picture together: which nodes serve a route, where a c
 
 ## What you can do
 
-### Design networks with Flow Studio
+### Nodes and providers
 
-Build visual topologies from entry points, nodes, routes and transit pools. Import existing Remnawave configurations, manage Flow versions, inspect diagnostics and apply changes from the panel. HAProxy, WARP and Telegram proxies fit into the same network workflow.
+Connect existing servers over SSH or create VPS instances through supported provider APIs. Choose an account, region, plan and operating system; install services, agents and TLS. Manage node groups and server deletion where the provider adapter supports it, with explicit controls for destructive operations.
 
-### Manage nodes throughout their lifecycle
+### Flow Studio
 
-Connect existing servers over SSH or provision them through supported providers. Organize nodes into groups, configure domains and TLS, inspect metrics and logs, manage services and roll out updates through node agents.
+Build visual topologies with entry points, transit nodes, WARP, CDN and routing rules on one canvas. Connect external HTTP proxies, import existing Remnawave configurations, manage Flow versions and inspect diagnostics before applying changes.
 
-### Detect problems and plan recovery
+### Transports and load balancing
 
-Health checks show the state of your infrastructure. Flow Guard lets you assemble recovery scenarios, define execution conditions and choose manual or explicitly permitted automatic recovery. Execution history keeps the outcome of each attempt visible.
+Manage HAProxy servers, routes, pools, connection limits and port rotation. Run OpenFlux and Telegram proxy fleets alongside the rest of your network, with configuration and operational state available from the panel.
 
-### Run customer support alongside your infrastructure
+### Flow Guard and RescueFlow
 
-Receive Telegram messages as tickets, assign operators, track priorities and SLA, and keep the conversation history attached to the request. Operators can work from the panel, a Telegram forum or a dedicated portal.
+Build recovery scenarios with checks, conditions and explicit action branches. Reprovision a server, replace a node, transfer its role in Flow and switch routes where supported. Choose manual execution or permitted automation, then follow each attempt in the execution history. Available provider actions depend on the adapter.
 
-### Keep the rest of your operations connected
+### Multiple Remnawave panels
 
-| Area | What it brings together |
-| :--- | :--- |
-| **Remnawave** | Panel connections, synchronization, backups, updates and migration workflows. |
-| **Network services** | HAProxy parks, proxy services, OpenFlux, CDN resources and DNS integrations. |
-| **Security** | Abuse signals, Egress Guard policies, node protection, access controls and an audit trail. |
-| **Subscriptions** | Customer subscription pages connected to Remnawave. |
-| **Statuspage** | Public service status, monitored components, incidents and scheduled maintenance. |
-| **Providers & integrations** | Provider accounts, server provisioning and connections to external services. |
-| **API & MCP** | External clients and automation with scoped access and a searchable operations catalog. |
+Connect several Remnawave panels to one Axottle installation. Organize work by project, synchronize users, import configurations into Flow, manage updates and move installations between servers.
+
+### Monitoring and service status
+
+Inspect node metrics, service health, TLS and route checks, and external probes. Track incidents, receive Telegram notifications and publish component status and scheduled maintenance through Statuspage.
+
+### DNS, CDN and GeoAssets
+
+Manage Cloudflare AutoDNS, CDN provider accounts and resources, and SelfSteal masking. Maintain GeoIP, geosite and custom lists used by routing rules, with their updates managed from the panel.
+
+### Subscriptions and Happ
+
+Publish customer subscription pages connected to Remnawave. Configure Happ themes, personalize presentation, send announcements to users or groups and use the subscription API for integrations.
+
+### Support and team workflows
+
+Turn Telegram messages into tickets with priorities, SLA, ownership and conversation history. Work from the panel, a Telegram forum or a dedicated operator portal. Maintain a knowledge base, review support analytics and coordinate responses to shared incidents.
+
+### Security and access controls
+
+Investigate abuse signals, configure QoS and node protection profiles, and manage outgoing traffic with Egress Guard. Control team permissions and MFA, protect stored secrets with encryption and review operations in the audit log.
+
+### Backups and recovery
+
+Schedule backups for Axottle and Remnawave, configure retention and store archives locally or in S3-compatible storage, including R2 and MinIO. Encrypt archives, verify their integrity and restore data through the available recovery tools.
+
+### Telepurte — server access
+
+Use Web SSH and an SSH bastion, grant temporary access through a link and review session recordings. Run permitted commands across selected server groups and schedule operational tasks. Telepurte can run independently and connect to Axottle for sign-in and node synchronization.
+
+### API and MCP
+
+Connect external clients and automate operations through scoped permissions. The searchable MCP catalog loads only the operation schemas needed for the task.
 
 ## From your first node to daily operations
 
