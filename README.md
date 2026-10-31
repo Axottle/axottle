@@ -11,6 +11,12 @@ Axottle is a self-hosted control panel for running infrastructure built around R
 
 It brings the operational picture together: which nodes serve a route, where a connection fails, which recovery policy applies and which customers are affected. From the first server to a distributed fleet, the same panel handles configuration, day-to-day operations and incident response.
 
+## Flow Studio in action
+
+Add nodes, connect routes and build your topology on one canvas.
+
+https://github.com/user-attachments/assets/17ec1460-6b67-475f-a343-31c3b20ea4d2
+
 ## What you can do
 
 ### Nodes and providers

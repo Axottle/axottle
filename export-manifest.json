@@ -2,8 +2,8 @@
   "files": {
     ".gitignore": "c1772af9dcfc20dbd174e0354a4e068434fdaca2e68fef82945c3cdb10d2f310",
     "LICENSE": "41f9b38758a1bd419f7d5d0a79a1f477d18703e2f24c095dbf76ce907755d378",
-    "README.md": "9b0a72bd3dd0afa36471518980092a1d2e01001dcdfa89911cf7c390709893ce",
-    "README.ru.md": "84e39683d8ec4f17207d062ce9172096631a84985cb722d43069c6b334a54147",
+    "README.md": "eb29fb4927598fc9951f6b4281907add34ae396b153ec28faecb64213acf1108",
+    "README.ru.md": "49247dcb3dfc7f685888044b5e7acf3867ca673c1213b9e82c4344ec23fe39e1",
     "cmd/axottle-core/main.go": "40ba2013dc0776b1484668b6bb0b06c367e093c627eece2f6398179261d94d6f",
     "cmd/axottle-installer/main.go": "a32fdc2d0ceb6a976df2a106139b298547881246a9b5d5a746962b863271be93",
     "docs/assets/readme-banner.svg": "5ca6f5bd20709a983d2189611e7447d64d7cb6c6f7affead152505fe3deb2210",
