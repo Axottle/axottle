@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAxoTheme } from "@/app/new/theme";
 import { Button } from "@/components/new/button";
+import { RepositoryButton } from "@/components/new/repository-button";
 import { Select } from "@/components/new/select";
 import { ErrorState, InlineLoader } from "@/components/new/state";
 import { useI18n } from "@/lib/i18n";
@@ -206,6 +207,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             />
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <RepositoryButton />
             <Button
               variant="ghost"
               size="sm"

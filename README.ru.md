@@ -88,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | b
 
 Установщик сам запросит `sudo`, если это необходимо. Настройка, ход установки и результат остаются в одном окне терминала.
 
-Сейчас устанавливается **v2.0.0-beta.1**. Интерактивный мастер скачивает ядро и движок одной версии, проверяет подписи и настраивает панель. Для установки без токена оба релизника должны быть публичными; для приватной установки используйте [инструкцию к выпуску](https://github.com/Axottle/axottle/releases/tag/v2.0.0-beta.1).
+Устанавливается **v2.0.0**. Интерактивный мастер скачивает ядро и движок одной версии, проверяет подписи и настраивает панель. [Описание выпуска](https://github.com/Axottle/axottle/releases/tag/v2.0.0).
 
 ## Сообщество
 
@@ -113,7 +113,7 @@ curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | b
 
 ```sh
 python3 scripts/open-core/build-ui.py
-go build -trimpath -buildvcs=false -o axottle ./cmd/axottle-core
+go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.0' -o axottle ./cmd/axottle-core
 go test ./...
 ```
 
