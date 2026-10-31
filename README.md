@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><strong>Making the complex simple.</strong></p>
-<p align="center"><strong>English</strong> · <a href="README.ru.md">Русский</a> · <a href="https://docs.axottle.com">Documentation</a> · <a href="https://docs.axottle.com/ru/getting-started/quickstart">Getting started</a></p>
+<p align="center"><strong>English</strong> · <a href="README.ru.md">Русский</a> · <a href="https://docs.axottle.com">Documentation</a> · <a href="https://docs.axottle.com/ru/getting-started/quickstart">Getting started</a> · <a href="https://t.me/axotalk">Community chat</a></p>
 
 ---
 
@@ -89,6 +89,10 @@ curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | b
 The installer requests `sudo` itself when needed and keeps setup, progress and the result in one terminal window.
 
 Currently installs **v2.0.0-beta.1**. The interactive installer downloads the matching core and engine, verifies their signatures and sets up the panel. Both release repositories must be public for installation without a token; private installations use the instructions in the [release notes](https://github.com/Axottle/axottle/releases/tag/v2.0.0-beta.1).
+
+## Community
+
+Join the [Axottle community chat](https://t.me/axotalk) to ask questions, share your setup and discuss ideas.
 
 ## Documentation
 

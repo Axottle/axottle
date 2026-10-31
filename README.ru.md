@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><strong>Всё сложное — проще.</strong></p>
-<p align="center"><a href="README.md">English</a> · <strong>Русский</strong> · <a href="https://docs.axottle.com">Документация</a> · <a href="https://docs.axottle.com/ru/getting-started/quickstart">Начать работу</a></p>
+<p align="center"><a href="README.md">English</a> · <strong>Русский</strong> · <a href="https://docs.axottle.com">Документация</a> · <a href="https://docs.axottle.com/ru/getting-started/quickstart">Начать работу</a> · <a href="https://t.me/axotalk">Чат сообщества</a></p>
 
 ---
 
@@ -89,6 +89,10 @@ curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | b
 Установщик сам запросит `sudo`, если это необходимо. Настройка, ход установки и результат остаются в одном окне терминала.
 
 Сейчас устанавливается **v2.0.0-beta.1**. Интерактивный мастер скачивает ядро и движок одной версии, проверяет подписи и настраивает панель. Для установки без токена оба релизника должны быть публичными; для приватной установки используйте [инструкцию к выпуску](https://github.com/Axottle/axottle/releases/tag/v2.0.0-beta.1).
+
+## Сообщество
+
+В [чате Axottle](https://t.me/axotalk) можно задать вопрос, обсудить настройку и поделиться идеями.
 
 ## Документация
 
