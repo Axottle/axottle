@@ -9,7 +9,7 @@
     "docs/assets/readme-banner.svg": "5ca6f5bd20709a983d2189611e7447d64d7cb6c6f7affead152505fe3deb2210",
     "go.mod": "842b9e6b8dd4f79e3190e0c02b883c2eb0cd64953ad2526a7ea9c0865d2bdfb8",
     "go.sum": "01f812e75f327adec5e177cb010180f63a074b159c9463868151ce2372a934ed",
-    "install.sh": "b8e12ddee020bae1d80c42c32d1e1045dccdaa3bffa74435547610257cb5f878",
+    "install.sh": "96afaf14823c5509af82771a06f735abd27b515f1753702bd23a19d371f29e7c",
     "internal/audit/audit.go": "2301925ae1e7ceb43cfd79821fa1310a7d46ec263ad63b4138517572d7d1a84b",
     "internal/audit/audit_test.go": "1d6fb33254ce6d02a424953ea7edd6660dca83ae3c34836d0a5812fb74fe0ff1",
     "internal/audit/context.go": "088af6896c64fbc205a06f825abfe04663d2262f2065391414d8a2529cabfa01",
