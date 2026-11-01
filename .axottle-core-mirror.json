@@ -1,7 +1,7 @@
 {
-  "export_sha256": "531fd28ede547405e331849260d1fce620e4a8c3ee456a66f69f583c903044bf",
+  "export_sha256": "efa9f515cb2cc4c006e14079233c551502319026735a268d739293f5bb3ec066",
   "repository": "Axottle/axottle",
   "schema": 1,
   "tool": "axottle-open-core",
-  "version": "v2.0.2"
+  "version": "v2.0.3"
 }
