@@ -2,14 +2,14 @@
   "files": {
     ".gitignore": "c1772af9dcfc20dbd174e0354a4e068434fdaca2e68fef82945c3cdb10d2f310",
     "LICENSE": "41f9b38758a1bd419f7d5d0a79a1f477d18703e2f24c095dbf76ce907755d378",
-    "README.md": "f50d3a16c5bff583388fbf3c4ff319e87daabd0d857fdec3068687c1ecde1974",
-    "README.ru.md": "22c2595b71239d809610c75e7845b1c8ae48a2b2e4afa2a4d293c51979dec407",
+    "README.md": "b70dc76c08a4a2ef772d64169bb900cf323ad8b402731da72cdd4c7fd037a4c4",
+    "README.ru.md": "1f5ab142f512821762cb014ed7775c9be50f77f01487990c710bc676be9a3fe0",
     "cmd/axottle-core/main.go": "40ba2013dc0776b1484668b6bb0b06c367e093c627eece2f6398179261d94d6f",
     "cmd/axottle-installer/main.go": "a32fdc2d0ceb6a976df2a106139b298547881246a9b5d5a746962b863271be93",
     "docs/assets/readme-banner.svg": "5ca6f5bd20709a983d2189611e7447d64d7cb6c6f7affead152505fe3deb2210",
     "go.mod": "842b9e6b8dd4f79e3190e0c02b883c2eb0cd64953ad2526a7ea9c0865d2bdfb8",
     "go.sum": "01f812e75f327adec5e177cb010180f63a074b159c9463868151ce2372a934ed",
-    "install.sh": "051449954af30001d201c718ab0bf7058e564e740d5c369c9b9ae8eb1cfc2282",
+    "install.sh": "ee74d644fbf2fb663c4b3c095fea6d76788db0199822ba18a29dfbe3ffbd66df",
     "internal/audit/audit.go": "2301925ae1e7ceb43cfd79821fa1310a7d46ec263ad63b4138517572d7d1a84b",
     "internal/audit/audit_test.go": "1d6fb33254ce6d02a424953ea7edd6660dca83ae3c34836d0a5812fb74fe0ff1",
     "internal/audit/context.go": "088af6896c64fbc205a06f825abfe04663d2262f2065391414d8a2529cabfa01",
@@ -140,7 +140,7 @@
     "web/admin/tsconfig.json": "1b33e263d380499d828847bb2bd733a7dd9fc92bb41e3bf7e45150833b75dd47"
   },
   "publishable": true,
-  "release_version": "v2.0.3",
+  "release_version": "v2.0.4",
   "schema": 1,
   "stage": "standalone-core-ui"
 }
