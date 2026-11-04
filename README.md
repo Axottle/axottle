@@ -88,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | b
 
 The installer requests `sudo` itself when needed and keeps setup, progress and the result in one terminal window.
 
-Installs **v2.0.5**. The interactive installer downloads the matching core and engine, verifies their signatures and sets up the panel. [Release notes](https://github.com/Axottle/axottle/releases/tag/v2.0.5).
+Installs **v2.0.6-beta.2**. The interactive installer downloads the matching core and engine, verifies their signatures and sets up the panel. [Release notes](https://github.com/Axottle/axottle/releases/tag/v2.0.6-beta.2).
 
 ## Community
 
@@ -113,7 +113,7 @@ Before building the Go binary, compile the public UI. Generated bundles are not 
 
 ```sh
 python3 scripts/open-core/build-ui.py
-go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.5' -o axottle ./cmd/axottle-core
+go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.6-beta.2' -o axottle ./cmd/axottle-core
 go test ./...
 ```
 

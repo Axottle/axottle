@@ -4,8 +4,8 @@
 # when this entry point is supplied through curl | bash.
 axottle_install() (
   set -euo pipefail
-  readonly version='v2.0.5'
-  readonly installer_sha256='3a4934311444337f4595b1694f305567c930648b709983a219edec2336a111b7'
+  readonly version='v2.0.6-beta.2'
+  readonly installer_sha256='ac5bd2a25aa6bf36d33a8e4465d605b8a6fd121a6d8793389038199e5beff593'
   readonly installer_revision='r1'
   readonly ui_amd64_sha256='e2b38bc4db6a8255afed14f9c10fff2f09999e2496fcee42ca08e29645963c7e'
   readonly ui_arm64_sha256='6b34b542220b83cbaa3e8d37647d9d8f2e20dd63eb633c7722906c142a8b4fb9'

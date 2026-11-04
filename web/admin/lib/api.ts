@@ -15,6 +15,7 @@ export async function request<T>(
     body?: unknown;
     signal?: AbortSignal;
     project?: string;
+    setupToken?: string;
   } = {},
 ): Promise<T> {
   let project = options.project;
@@ -32,6 +33,7 @@ export async function request<T>(
         ? { "Content-Type": "application/json" }
         : {}),
       ...(project ? { "X-Axottle-Project": project } : {}),
+      ...(options.setupToken ? { "X-Axottle-Setup-Token": options.setupToken } : {}),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });

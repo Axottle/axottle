@@ -28,6 +28,7 @@ export function WizardDialog<ID extends string>({
   busy = false,
   size = "xl",
   firstEditableStep = 0,
+  workspace = false,
 }: {
   open?: boolean;
   title: string;
@@ -39,7 +40,9 @@ export function WizardDialog<ID extends string>({
   footer: ReactNode;
   mascot?: string;
   busy?: boolean;
-  size?: "xl" | "dashboard";
+  size?: "xl" | "dashboard" | "canvas";
+  /** A wide review canvas uses the full row below the mascot and step heading. */
+  workspace?: boolean;
   firstEditableStep?: number;
 }) {
   const { lang } = useI18n();
@@ -67,10 +70,10 @@ export function WizardDialog<ID extends string>({
     >
       <div
         data-axo-wizard
-        className="grid gap-5 sm:grid-cols-[250px_minmax(0,1fr)] sm:gap-8"
+        className={cn("grid gap-5", workspace ? "grid-cols-[64px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)]" : "sm:grid-cols-[250px_minmax(0,1fr)] sm:gap-8")}
         aria-busy={busy}
       >
-        <div className="flex justify-center border-b border-[var(--axo-border)] pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-7">
+        <div className={cn("flex justify-center", !workspace && "border-b border-[var(--axo-border)] pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-7")}>
           <img
             src={mascot}
             alt=""
@@ -78,10 +81,10 @@ export function WizardDialog<ID extends string>({
             draggable={false}
             width={1254}
             height={1254}
-            className="pointer-events-none h-[130px] w-[150px] select-none object-contain sm:sticky sm:top-4 sm:mt-16 sm:h-[280px] sm:w-full sm:self-start"
+            className={cn("pointer-events-none select-none object-contain", workspace ? "h-20 w-20 self-center sm:h-28 sm:w-28" : "h-[130px] w-[150px] sm:sticky sm:top-4 sm:mt-16 sm:h-[280px] sm:w-full sm:self-start")}
           />
         </div>
-        <div className="min-w-0 sm:min-h-[390px]">
+        <div className={cn("min-w-0", !workspace && "sm:min-h-[390px]")}>
           <nav
             aria-label={lang === "ru" ? "Шаги настройки" : "Setup steps"}
             className="mb-4 flex gap-1.5"
@@ -122,8 +125,9 @@ export function WizardDialog<ID extends string>({
           <p className="mt-2 text-[13px] leading-relaxed text-[var(--axo-text-muted)]">
             {current?.hint}
           </p>
-          <div className="mt-5 min-w-0 space-y-4">{children}</div>
+          {!workspace && <div className="mt-5 min-w-0 space-y-4">{children}</div>}
         </div>
+        {workspace && <div className="col-span-2 min-w-0">{children}</div>}
       </div>
     </Dialog>
   );

@@ -111,3 +111,29 @@ func (g *LoginGuard) gcLocked(now time.Time) {
 		}
 	}
 }
+
+// Allow reserves an attempt before expensive credential work. Concurrent
+// requests cannot all pass a separate check before their failures are recorded.
+func (g *LoginGuard) Allow(key string) bool {
+	if g == nil {
+		return true
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	now := g.now()
+	g.gcLocked(now)
+	w := g.m[key]
+	if w != nil && now.Before(w.lockedUntil) {
+		return false
+	}
+	if w == nil || now.Sub(w.windowStart) >= g.window {
+		w = &loginAttempts{windowStart: now}
+		g.m[key] = w
+	}
+	if w.count >= g.max {
+		w.lockedUntil = now.Add(g.lockout)
+		return false
+	}
+	w.count++
+	return true
+}

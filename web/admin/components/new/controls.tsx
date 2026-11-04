@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { Check, Minus } from "lucide-react";
 import { cn } from "./utils";
@@ -84,6 +84,8 @@ export function Checkbox({
   hint,
   ariaLabel,
   className,
+  title,
+  style,
 }: {
   checked: boolean;
   indeterminate?: boolean;
@@ -93,11 +95,15 @@ export function Checkbox({
   hint?: React.ReactNode;
   ariaLabel?: string;
   className?: string;
+  title?: string;
+  style?: CSSProperties;
 }) {
   const labelID = useId();
   const hintID = useId();
   return (
     <label
+      title={title}
+      style={style}
       className={cn(
         "inline-flex items-start gap-2.5 cursor-pointer select-none",
         disabled && "opacity-50 cursor-not-allowed",

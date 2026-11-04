@@ -37,7 +37,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-invalid={invalid || undefined}
           className={cn(
             baseField,
-            "h-10 rounded-[14px] text-sm",
+            "h-10 rounded-[12px] text-sm",
             leftIcon ? "pl-10" : "pl-4",
             rightIcon ? "pr-10" : "pr-4",
             invalid && "border-[var(--axo-status-crit)]",
@@ -59,7 +59,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       aria-invalid={invalid || undefined}
       className={cn(
         baseField,
-        "h-10 px-4 rounded-[14px] text-sm",
+        "h-10 px-4 rounded-[12px] text-sm",
         invalid && "border-[var(--axo-status-crit)]",
         className,
       )}
@@ -80,7 +80,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         aria-invalid={invalid || undefined}
         className={cn(
           baseField,
-          "min-h-[96px] p-3 rounded-[14px] text-sm resize-y",
+          "min-h-[96px] p-3 rounded-[12px] text-sm resize-y",
           invalid && "border-[var(--axo-status-crit)]",
           className,
         )}

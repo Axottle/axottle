@@ -17,6 +17,7 @@ export function PermissionPicker({
   const text = useText(),
     all = value.includes("*");
   const labels: Record<string, string> = {
+    "global.admin": text("Глобальный администратор (все проекты и настройки)", "Global administrator (all projects and settings)"),
     "accounts.manage": text(
       "Управлять пользователями и доступом",
       "Manage users and access",
@@ -37,8 +38,8 @@ export function PermissionPicker({
       </legend>
       <Checkbox
         checked={all}
-        onChange={(v) => onChange(v ? ["*"] : ["settings.view"])}
-        label={text("Полный доступ", "Full access")}
+        onChange={(v) => onChange(v ? ["*"] : [])}
+        label={text("Все права проекта", "All project capabilities")}
         hint={text(
           "Действует в назначенных проектах",
           "Applies within assigned projects",

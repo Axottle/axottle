@@ -13,9 +13,9 @@ func TestNormalizePermissions(t *testing.T) {
 		want    []string
 		wantErr error
 	}{
-		{"nil means full access", nil, []string{PermissionAll}, nil},
-		{"empty means full access", []string{}, []string{PermissionAll}, nil},
-		{"wildcard collapses everything", []string{"nodes.view", "*", "cdn.view"}, []string{PermissionAll}, nil},
+		{"nil denies access", nil, []string{}, nil},
+		{"empty denies access", []string{}, []string{}, nil},
+		{"wildcard preserves explicit grants", []string{"nodes.view", "*", "cdn.view"}, []string{"*", "cdn.view", "nodes.view"}, nil},
 		{"valid list sorted and deduped", []string{"nodes.view", "nodes.view", "cdn.view"}, []string{"cdn.view", "nodes.view"}, nil},
 		{"blank entries skipped", []string{" nodes.view ", ""}, []string{"nodes.view"}, nil},
 		{"unknown rejected", []string{"nodes.view", "bogus.perm"}, nil, ErrUnknownPermission},
@@ -41,7 +41,7 @@ func TestNormalizePermissions(t *testing.T) {
 }
 
 func TestAdminCan(t *testing.T) {
-	full := &Admin{Permissions: []string{PermissionAll}}
+	full := &Admin{IsBootstrapSuperuser: true, Permissions: []string{PermissionAll}}
 	if !full.Can(PermNodesDelete) || !full.FullAccess() {
 		t.Fatal("wildcard admin must pass every check")
 	}

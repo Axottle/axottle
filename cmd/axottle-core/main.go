@@ -105,7 +105,7 @@ func run() error {
 			key = devKey
 		}
 		var legacy []string
-		if key != devKey {
+		if key != devKey && os.Getenv("AXOTTLE_ALLOW_LEGACY_DEV_KEY") == "1" {
 			legacy = []string{devKey}
 		}
 		app, err := coreapi.Open(ctx, coreapi.Config{DatabaseURL: databaseURL, SecretKey: key, LegacySecretKeys: legacy, PublicURL: os.Getenv("AXOTTLE_PUBLIC_URL"), DataDir: standaloneDataDir(), UI: coreui.Handler()})
@@ -122,13 +122,13 @@ func run() error {
 	defer handler.Close()
 	host, port := os.Getenv("AXOTTLE_HOST"), os.Getenv("AXOTTLE_PORT")
 	if host == "" {
-		host = "0.0.0.0"
+		host = "127.0.0.1"
 	}
 	if port == "" {
 		port = "8080"
 	}
 	server := &http.Server{Addr: net.JoinHostPort(host, port), Handler: handler,
-		ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 120 * time.Second, MaxHeaderBytes: 32 * 1024, IdleTimeout: 60 * time.Second}
 	serveResult := make(chan error, 1)
 	go func() { serveResult <- server.ListenAndServe() }()
 	log.Printf("Axottle core %s listening on %s", version.Current(), server.Addr)

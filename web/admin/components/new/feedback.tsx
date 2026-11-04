@@ -146,7 +146,7 @@ export function Tooltip({
       {children}
       <span
         className={cn(
-          "pointer-events-none absolute z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+          "pointer-events-none absolute z-50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200",
           "px-2 py-1 text-[11px] font-medium rounded-[8px] whitespace-nowrap",
           "bg-[var(--axo-surface-inverse)] text-[var(--axo-text-inverse)] shadow-lg",
           pos,
@@ -220,7 +220,7 @@ export function PageHeader({
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="flex items-start justify-between gap-4 lg:gap-6 mb-5 lg:mb-6 flex-wrap"
+      className="axo-page-header flex items-start justify-between gap-4 lg:gap-6 mb-5 lg:mb-6 flex-wrap"
     >
       {/* basis-[320px] на телефоне шире экрана — ниже sm колонка заголовка
           занимает всю строку, и блок действий переносится под неё. */}
@@ -246,7 +246,7 @@ export function PageHeader({
             ))}
           </div>
         )}
-        <h1 className="text-[24px] font-semibold tracking-tight text-[var(--axo-text)] leading-tight break-words">
+        <h1 className="text-[24px] font-medium tracking-tight text-[var(--axo-text)] leading-tight break-words">
           {title}
         </h1>
         {description && (
@@ -256,19 +256,9 @@ export function PageHeader({
         )}
         {meta && <div className="mt-3">{meta}</div>}
       </div>
-      {/* shrink-0 держал ряд кнопок в его max-content ширину, и на 360px он
-          уезжал за край экрана целиком — flex-wrap внутри не помогал, потому
-          что сжиматься было запрещено самому ряду. */}
-      {/* Ниже sm кнопки шапки идут колонкой во всю ширину. Своей шириной они
-          вставали по две в ряд с переносом, и ряд выглядел случайным: одна
-          кнопка сверху, вторая под ней с отступом слева. Селектор через
-          потомка нужен из-за EAgentTrigger — он оборачивает свою кнопку в
-          собственный div. */}
-      {/* :not(.hidden) обязателен: без него правило поднимало display даже у
-          блоков, спрятанных через `hidden md:flex`, и они проявлялись на
-          телефоне развалившимися в колонку. */}
+      {/* Actions wrap below the title; hidden desktop tools stay hidden on phones. */}
       {actions && (
-        <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:shrink-0 max-sm:[&>a]:flex max-sm:[&>a]:flex-col max-sm:[&>a]:items-stretch max-sm:[&>div:not(.hidden)]:flex max-sm:[&>div:not(.hidden)]:flex-col max-sm:[&>div:not(.hidden)]:items-stretch max-sm:[&>div:not(.hidden)]:gap-2">
+        <div className="axo-page-actions flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:shrink-0 max-sm:[&>a]:flex max-sm:[&>a]:flex-col max-sm:[&>a]:items-stretch max-sm:[&>div:not(.hidden)]:flex max-sm:[&>div:not(.hidden)]:flex-col max-sm:[&>div:not(.hidden)]:items-stretch max-sm:[&>div:not(.hidden)]:gap-2">
           {actions}
         </div>
       )}

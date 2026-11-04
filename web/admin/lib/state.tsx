@@ -94,7 +94,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         project: projects.find((p) => p.id === id) || null,
         ready,
         error,
-        can: (p) => Boolean(me?.permissions.some((v) => v === "*" || v === p)),
+        can: (p) => Boolean(me?.permissions.some((v) => v === "global.admin" || v === p || (v === "*" && (me?.is_bootstrap_superuser || p === "accounts.manage" || /^(nodes|connection_units|remnawave)\./.test(p) || p === "support.access")))),
         choose,
         refresh,
       }}

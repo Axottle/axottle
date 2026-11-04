@@ -73,9 +73,6 @@ export function StatusDot({
   };
   return (
     <motion.span
-      initial={{ scale: 0.6, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "inline-block w-2 h-2 rounded-full",
         colorMap[tone],

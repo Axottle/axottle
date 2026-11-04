@@ -30,7 +30,7 @@ interface DialogProps {
   description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl" | "dashboard";
+  size?: "sm" | "md" | "lg" | "xl" | "dashboard" | "canvas";
   zIndexClassName?: string;
   bodyClassName?: string;
   panelClassName?: string;
@@ -48,6 +48,7 @@ const sizes = {
   lg: "max-w-2xl",
   xl: "max-w-4xl",
   dashboard: "max-w-[1180px]",
+  canvas: "max-w-[1720px] sm:max-h-[96dvh]",
 };
 
 export function Dialog({

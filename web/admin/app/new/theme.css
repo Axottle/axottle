@@ -20,9 +20,8 @@
    атрибут на <html> ставит блокирующий скрипт из app/layout.tsx, чтобы
    тёмная тема не мигала светлой до гидратации.
 
-   Светлая тема: тёплый розовый воздух, белые карточки, мягкие тени.
-   Тёмная тема: midnight-graphite с розовым подтоном, мягкое свечение,
-   низкий контраст декора, премиальная глубина.
+   Нейтральные поверхности с лёгким коралловым подтоном. Акцент выделяет
+   действия и выбор, семантические цвета — состояние инфраструктуры.
    ───────────────────────────────────────────────────────────────────── */
 
 [data-axo-new] {
@@ -31,8 +30,8 @@
   --axo-radius-sm: 12px;
   --axo-radius-md: 16px;
   --axo-radius-lg: 20px;
-  --axo-radius-xl: 24px;
-  --axo-radius-2xl: 28px;
+  --axo-radius-xl: 20px;
+  --axo-radius-2xl: 24px;
   --axo-radius-pill: 999px;
 
   /* Шкала отступов */
@@ -52,19 +51,19 @@
 
   /* Семантические токены — палитра Coral, светлая.
      Ниже переопределяются по режиму и по палитре. */
-  --axo-bg: #FBF4F4;
-  --axo-bg-elev: #FDFBFB;
+  --axo-bg: #F8F6F6;
+  --axo-bg-elev: #FCFAFA;
   --axo-surface: #FFFFFF;
-  --axo-surface-2: #FCF5F5;
-  --axo-surface-3: #F7EBEB;
+  --axo-surface-2: #F5F2F3;
+  --axo-surface-3: #EEE8EA;
   --axo-surface-inverse: #1A1010;
-  --axo-border: #F2E3E3;
-  --axo-border-strong: #E3CCCC;
+  --axo-border: #E6DEE0;
+  --axo-border-strong: #CABBC0;
   --axo-logo-bg: #FBF3F3;
   --axo-logo-border: #E8D6D6;
   --axo-text: #1A1313;
   --axo-text-muted: #6B5B5B;
-  --axo-text-faint: #9A8B8B;
+  --axo-text-faint: #78686E;
   --axo-text-inverse: #FDF5F5;
 
   /* Акценты */
@@ -72,7 +71,7 @@
   --axo-accent-hover: #AC2433;
   --axo-accent-soft: #FDECEE;
   --axo-accent-text: #FFFFFF;
-  --axo-shadow-accent-hover: 0 6px 18px rgba(200, 44, 60, 0.24);
+  --axo-shadow-accent-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
 
   /* Мягкий бренд-оттенок: иконка активного пункта меню, аватар, акварель
      фона. В мятной палитре это был `--axo-mint*`; имена сохранены как
@@ -135,26 +134,26 @@
    всё ещё несёт data-axo-mode="light". */
 [data-axo-new][data-axo-mode="dark"],
 html[data-axo-mode="dark"] [data-axo-new] {
-  --axo-bg: #0A0708;
-  --axo-bg-elev: #100C0D;
-  --axo-surface: #181113;
-  --axo-surface-2: #1E1618;
-  --axo-surface-3: #251B1E;
+  --axo-bg: #100D0F;
+  --axo-bg-elev: #161214;
+  --axo-surface: #1B1719;
+  --axo-surface-2: #241E21;
+  --axo-surface-3: #2D2529;
   --axo-surface-inverse: #1E1214;
-  --axo-border: #281D20;
-  --axo-border-strong: #35272A;
+  --axo-border: #3A3035;
+  --axo-border-strong: #574950;
   --axo-logo-bg: #241A1C;
   --axo-logo-border: #3A2B2E;
   --axo-text: #F2EBEB;
   --axo-text-muted: #A99C9C;
-  --axo-text-faint: #776C6C;
+  --axo-text-faint: #AC9AA2;
   --axo-text-inverse: #F2EBEB;
 
   --axo-accent: #FC9CA1;
   --axo-accent-hover: #FFB4B8;
   --axo-accent-soft: rgba(252, 156, 161, 0.14);
   --axo-accent-text: #2A0E10;
-  --axo-shadow-accent-hover: 0 6px 18px rgba(252, 156, 161, 0.20);
+  --axo-shadow-accent-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
 
   --axo-blush: #FFC0C3;
   --axo-blush-soft: rgba(252, 156, 161, 0.16);
@@ -205,14 +204,14 @@ html[data-axo-palette="mint"] [data-axo-new],
   --axo-logo-border: #D8E1DC;
   --axo-text: #0F1A16;
   --axo-text-muted: #5B6B65;
-  --axo-text-faint: #8A9893;
+  --axo-text-faint: #63766D;
   --axo-text-inverse: #F4FAF7;
 
-  --axo-accent: #0E8E72;
-  --axo-accent-hover: #0B7861;
+  --axo-accent: #087B62;
+  --axo-accent-hover: #06654F;
   --axo-accent-soft: #DCEFE7;
   --axo-accent-text: #FFFFFF;
-  --axo-shadow-accent-hover: 0 6px 18px rgba(14, 142, 114, 0.25);
+  --axo-shadow-accent-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
 
   --axo-blush: #B8E5D5;
   --axo-blush-soft: #DEF1E8;
@@ -220,7 +219,7 @@ html[data-axo-palette="mint"] [data-axo-new],
 
   --axo-status-ok: #16A07A;
   --axo-status-ok-soft: #DCEFE7;
-  --axo-status-warn: #C58A12;
+  --axo-status-warn: #855A07;
   --axo-status-warn-soft: #FAEDCD;
   --axo-status-crit: #D14B4B;
   --axo-status-crit-soft: #FBE1E1;
@@ -258,14 +257,14 @@ html[data-axo-palette="mint"] [data-axo-new][data-axo-mode="dark"],
   --axo-logo-border: #313B48;
   --axo-text: #EAF1ED;
   --axo-text-muted: #9AA8A2;
-  --axo-text-faint: #6A7770;
+  --axo-text-faint: #93A69B;
   --axo-text-inverse: #EAF1ED;
 
   --axo-accent: #34D8A8;
   --axo-accent-hover: #5BE5B7;
   --axo-accent-soft: rgba(52, 216, 168, 0.12);
   --axo-accent-text: #06120E;
-  --axo-shadow-accent-hover: 0 6px 18px rgba(52, 216, 168, 0.22);
+  --axo-shadow-accent-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
 
   --axo-blush: #5BE5B7;
   --axo-blush-soft: rgba(52, 216, 168, 0.16);
@@ -502,36 +501,9 @@ html[data-axo-palette="mint"][data-axo-mode="dark"] body { background-color: #07
   background: rgba(91, 107, 101, 0.28);
 }
 
-/* ────────── Атмосферный фон ──────────
-   Оттенки берутся из палитры (--axo-fx-*), геометрия пятен — из режима. */
-[data-axo-new][data-axo-mode="light"] .axo-app-bg {
-  background:
-    radial-gradient(1200px 600px at 0% -10%, var(--axo-fx-1) 0%, transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, var(--axo-fx-2) 0%, transparent 55%),
-    var(--axo-bg);
-}
-
-[data-axo-new][data-axo-mode="dark"] .axo-app-bg {
-  background:
-    radial-gradient(1000px 500px at 0% -10%, var(--axo-fx-1) 0%, transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, var(--axo-fx-2) 0%, transparent 55%),
-    var(--axo-bg);
-  position: relative;
-}
-
-[data-axo-new][data-axo-mode="dark"] .axo-app-bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle at 25% 20%, rgba(255,255,255,0.6) 0.5px, transparent 1px),
-                    radial-gradient(circle at 70% 60%, rgba(255,255,255,0.4) 0.5px, transparent 1px),
-                    radial-gradient(circle at 50% 90%, rgba(255,255,255,0.5) 0.5px, transparent 1px),
-                    radial-gradient(circle at 90% 30%, rgba(255,255,255,0.3) 0.5px, transparent 1px);
-  background-size: 220px 180px, 280px 220px, 200px 240px, 320px 260px;
-  opacity: 0.35;
-  pointer-events: none;
-  mix-blend-mode: screen;
-}
+/* Quiet surfaces let topology, status and operational data carry the color. */
+[data-axo-new].axo-app-bg,
+[data-axo-new] .axo-app-bg { background: var(--axo-bg); }
 
 /* ────────── Axosun: компактное окно поверх рабочей области ──────────
    Окно не модальное: страница позади остаётся видимой, кликабельной и
@@ -1745,31 +1717,24 @@ html[data-axo-palette="mint"][data-axo-mode="dark"] body { background-color: #07
 [data-axo-new] .axo-pulse-ok { animation: axo-pulse-ok 2.4s var(--axo-ease) infinite; }
 [data-axo-new] .axo-pulse-crit { animation: axo-pulse-crit 1.6s var(--axo-ease) infinite; }
 
-[data-axo-new][data-axo-mode="light"] .axo-health-hero {
-  background: var(--axo-hero-gradient);
-  border-color: rgba(26, 19, 19, 0.08);
-  box-shadow:
-    0 16px 38px rgba(26, 19, 19, 0.10),
-    0 2px 8px rgba(26, 19, 19, 0.05);
+[data-axo-new] .axo-health-hero {
+  --axo-mint: var(--axo-accent);
+  background: var(--axo-surface-2);
+  color: var(--axo-text);
+  border-color: var(--axo-border);
+  box-shadow: var(--axo-shadow-sm);
 }
-
-[data-axo-new][data-axo-mode="light"] .axo-health-hero-glow {
-  opacity: 0.18;
+[data-axo-new] .axo-health-hero-glow { display: none; }
+[data-axo-new] .axo-health-hero-stat {
+  background: var(--axo-surface);
+  border-color: var(--axo-border);
 }
-
-[data-axo-new][data-axo-mode="light"] .axo-health-hero-stat {
-  background: rgba(255, 255, 255, 0.075);
-  border-color: rgba(255, 255, 255, 0.14);
+[data-axo-new] .axo-health-hero-link {
+  color: var(--axo-text);
+  background: var(--axo-surface);
+  border: 1px solid var(--axo-border-strong);
 }
-
-[data-axo-new][data-axo-mode="light"] .axo-health-hero-link {
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-[data-axo-new][data-axo-mode="light"] .axo-health-hero-link:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
+[data-axo-new] .axo-health-hero-link:hover { background: var(--axo-surface-3); }
 
 [data-axo-new] .axo-skeleton {
   background: linear-gradient(90deg,
@@ -1933,30 +1898,6 @@ html[data-axo-palette="mint"][data-axo-mode="dark"] body { background-color: #07
   }
 }
 
-/* Secondary Flow Studio labels expand on hover; touch keeps labels visible. */
-[data-axo-new] .axo-flow-section-label {
-  display: grid;
-  grid-template-columns: 1fr;
-  white-space: nowrap;
-}
-[data-axo-new] .axo-flow-section-label > span {
-  min-width: 0;
-  overflow: hidden;
-}
-@media (hover: hover) and (pointer: fine) {
-  [data-axo-new] .axo-flow-section-tab[data-reveal-label] { gap: 0; }
-  [data-axo-new] .axo-flow-section-tab[data-reveal-label] .axo-flow-section-label {
-    grid-template-columns: 0fr;
-    opacity: 0;
-    margin-inline-start: 0;
-    transition: grid-template-columns 240ms ease, opacity 180ms ease, margin-inline-start 240ms ease;
-  }
-  [data-axo-new] .axo-flow-section-tab[data-reveal-label]:is(:hover, :focus-visible) .axo-flow-section-label {
-    grid-template-columns: 1fr;
-    opacity: 1;
-    margin-inline-start: 0.5rem;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   [data-axo-new] .axo-flow-section-tab .axo-flow-section-label { transition: none; }
 }

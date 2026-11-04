@@ -48,7 +48,7 @@ func newTestService(t *testing.T, db dbx, master string, legacy ...string) *Serv
 
 func TestOpenReadsRowsSealedWithTheCurrentKey(t *testing.T) {
 	db := &fakeDB{}
-	svc := newTestService(t, db, "a-real-32-byte-master-key-value!")
+	svc := newTestService(t, db, "a-real-32-byte-master-key-value!-padding-for-tests")
 
 	ct, nonce, err := svc.encrypt([]byte("bot-token"))
 	if err != nil {
@@ -80,7 +80,7 @@ func TestOpenFallsBackToLegacyKeyAndReEncrypts(t *testing.T) {
 		t.Fatalf("encrypt with legacy key: %v", err)
 	}
 
-	svc := newTestService(t, db, "generated-32-byte-master-key-xx!", legacyMaster)
+	svc := newTestService(t, db, "generated-32-byte-master-key-xx!-padding-for-tests", legacyMaster)
 	got, err := svc.open(context.Background(), "totp.admin.7", ct, nonce)
 	if err != nil {
 		t.Fatalf("open with legacy fallback: %v", err)
@@ -113,7 +113,7 @@ func TestOpenFallsBackToLegacyKeyAndReEncrypts(t *testing.T) {
 		t.Fatalf("nonce arg is %T, want []byte", write.args[2])
 	}
 	// The rewritten row must open under the NEW key alone.
-	fresh := newTestService(t, &fakeDB{}, "generated-32-byte-master-key-xx!")
+	fresh := newTestService(t, &fakeDB{}, "generated-32-byte-master-key-xx!-padding-for-tests")
 	plain, err := fresh.open(context.Background(), "totp.admin.7", newCT, newNonce)
 	if err != nil {
 		t.Fatalf("re-encrypted row does not open under the new key: %v", err)
@@ -134,7 +134,7 @@ func TestOpenSurvivesAFailedReEncrypt(t *testing.T) {
 	}
 
 	db := &fakeDB{err: sql.ErrConnDone}
-	svc := newTestService(t, db, "generated-32-byte-master-key-xx!", legacyMaster)
+	svc := newTestService(t, db, "generated-32-byte-master-key-xx!-padding-for-tests", legacyMaster)
 
 	got, err := svc.open(context.Background(), "backup_s3_1", ct, nonce)
 	if err != nil {
@@ -146,13 +146,13 @@ func TestOpenSurvivesAFailedReEncrypt(t *testing.T) {
 }
 
 func TestOpenReportsFailureWhenNoKeyFits(t *testing.T) {
-	sealed := newTestService(t, &fakeDB{}, "some-other-master-key-entirely!!")
+	sealed := newTestService(t, &fakeDB{}, "some-other-master-key-entirely!!-padding-for-tests")
 	ct, nonce, err := sealed.encrypt([]byte("unreachable"))
 	if err != nil {
 		t.Fatalf("encrypt: %v", err)
 	}
 
-	svc := newTestService(t, &fakeDB{}, "generated-32-byte-master-key-xx!", "dev-secret-change-me-in-production")
+	svc := newTestService(t, &fakeDB{}, "generated-32-byte-master-key-xx!-padding-for-tests", "dev-secret-change-me-in-production")
 	if _, err := svc.open(context.Background(), "id", ct, nonce); err == nil {
 		t.Fatal("open must fail when neither the current nor a legacy key opens the row")
 	}
@@ -168,5 +168,13 @@ func TestNewSkipsRedundantLegacyKeys(t *testing.T) {
 	}
 	if len(svc.legacy) != 0 {
 		t.Fatalf("legacy keys = %d, want 0 for a duplicate of the current key", len(svc.legacy))
+	}
+}
+
+func TestShortMasterKeysRejected(t *testing.T) {
+	for _, key := range []string{"", "password", "short-key"} {
+		if _, err := deriveKey(key); err == nil {
+			t.Fatal("weak master key accepted")
+		}
 	}
 }

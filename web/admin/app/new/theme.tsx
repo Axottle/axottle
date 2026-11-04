@@ -1,5 +1,7 @@
 "use client";
 
+import { documentBackground } from "@/lib/new/theme-colors";
+
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState } from "react";
 
 export type AxoMode = "light" | "dark";
@@ -51,7 +53,7 @@ export function AxoThemeProvider({
       }
     } catch {}
     document.documentElement.setAttribute("data-axo-mode", next);
-    document.documentElement.style.backgroundColor = next === "dark" ? "#07090C" : "#F1F6F4";
+    document.documentElement.style.backgroundColor = documentBackground(next, document.documentElement.getAttribute("data-axo-palette"));
     document.documentElement.style.colorScheme = next;
     document.body.setAttribute("data-axo-mode", next);
     setModeState(next);
@@ -87,13 +89,13 @@ export function AxoThemeProvider({
   useEffect(() => {
     if (!ready) return;
     document.documentElement.setAttribute("data-axo-mode", mode);
-    document.documentElement.style.backgroundColor = mode === "dark" ? "#07090C" : "#F1F6F4";
+    document.documentElement.style.backgroundColor = documentBackground(mode, palette);
     document.documentElement.style.colorScheme = mode;
     document.body.setAttribute("data-axo-mode", mode);
     if (!forcedMode) {
       try { localStorage.setItem(STORAGE_KEY, mode); } catch {}
     }
-  }, [forcedMode, mode, ready]);
+  }, [forcedMode, mode, palette, ready]);
 
   useLayoutEffect(() => {
     if (!ready) return;

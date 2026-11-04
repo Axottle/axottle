@@ -60,12 +60,26 @@ func Open(ctx context.Context, cfg Config) (*Server, error) {
 	}
 	s := &Server{db: database, auth: auth.NewService(database, logger), setup: setup.NewService(database, logger),
 		projects: projects.NewService(database.DB), audit: audit.NewService(database, logger)}
+	if err := s.setup.ConfigureBootstrap(cfg.DataDir); err != nil {
+		database.Close()
+		return nil, err
+	}
 	s.auth.SetSecretStore(secrets)
+	s.auth.SetSecurityEventSink(func(ctx context.Context, action, id string) {
+		status := "ok"
+		if strings.HasSuffix(action, ".failed") {
+			status = "failed"
+		}
+		s.audit.Log(ctx, audit.Entry{Action: action, ResourceType: "admin", ResourceID: id, Status: status})
+	})
 	boundary := auth.NewCredentialBoundaryFile(cfg.DataDir)
 	s.auth.SetCredentialBoundary(boundary.Epoch, boundary.Blocked)
 	s.credentialBoundary = boundary
 	s.sessions = &authhttp.Handler{Auth: s.auth, Setup: s.setup, PublicURL: cfg.PublicURL,
-		LoginGuard: auth.NewLoginGuard(5, 5*time.Minute, 15*time.Minute)}
+		LoginGuard: auth.NewLoginGuard(5, 5*time.Minute, 15*time.Minute),
+		Audit: func(ctx context.Context, action, username, status string) {
+			s.audit.Log(ctx, audit.Entry{ActorType: "admin", ActorID: username, Action: action, ResourceType: "session", Status: status})
+		}}
 	s.routes()
 	if cfg.UI != nil {
 		s.mux.Handle("/", cfg.UI)
@@ -76,6 +90,7 @@ func Open(ctx context.Context, cfg Config) (*Server, error) {
 func (s *Server) Close() error                    { return s.db.Close() }
 func (s *Server) Ready(ctx context.Context) error { return s.db.PingContext(ctx) }
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	authhttp.SecurityHeaders(w, s.sessions.IsSecureRequest(r))
 	if s.credentialBoundary != nil && s.credentialBoundary.Blocked() {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Retry-After", "2")
@@ -166,6 +181,10 @@ func (s *Server) setupStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) setupAdmin(w http.ResponseWriter, r *http.Request) {
 	if s.setup.IsSealed(r.Context()) {
 		failure(w, 403, "setup is sealed")
+		return
+	}
+	if !s.setup.AuthorizeBootstrap(r) {
+		failure(w, 403, "bootstrap token required; read bootstrap.token in the data directory on the installation host")
 		return
 	}
 	var req struct {
@@ -392,8 +411,19 @@ func (s *Server) totpStatus(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) totpSetup(w http.ResponseWriter, r *http.Request) {
 	a := auth.AdminFromContext(r.Context())
-	value, err := s.auth.BeginTOTPSetup(r.Context(), a.ID, a.Username)
+	var req struct {
+		Password string `json:"password"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+
+	value, err := s.auth.BeginTOTPSetup(r.Context(), a.ID, a.Username, req.Password)
 	if err != nil {
+		if errors.Is(err, auth.ErrRateLimited) {
+			failure(w, 429, err.Error())
+			return
+		}
 		failure(w, 400, "two-factor setup refused")
 		return
 	}
@@ -401,12 +431,17 @@ func (s *Server) totpSetup(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) totpConfirm(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Code string `json:"code"`
+		Code     string `json:"code"`
+		Password string `json:"password"`
 	}
 	if !decode(w, r, &req) {
 		return
 	}
-	if err := s.auth.ConfirmTOTP(r.Context(), auth.AdminFromContext(r.Context()).ID, req.Code); err != nil {
+	if err := s.auth.ConfirmTOTP(r.Context(), auth.AdminFromContext(r.Context()).ID, req.Code, req.Password); err != nil {
+		if errors.Is(err, auth.ErrRateLimited) {
+			failure(w, 429, err.Error())
+			return
+		}
 		failure(w, 400, "invalid authentication code")
 		return
 	}
@@ -421,6 +456,10 @@ func (s *Server) totpDisable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.auth.DisableTOTP(r.Context(), auth.AdminFromContext(r.Context()).ID, req.Password, req.Code); err != nil {
+		if errors.Is(err, auth.ErrRateLimited) {
+			failure(w, 429, err.Error())
+			return
+		}
 		failure(w, 400, "two-factor disable refused")
 		return
 	}

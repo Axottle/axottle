@@ -39,10 +39,6 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={hoverable ? { y: -2 } : undefined}
       className={cn(
         "rounded-[var(--axo-radius-xl)] transition-shadow duration-200",
         variants[variant],
@@ -71,7 +67,7 @@ export function CardHeader({
   return (
     <div className={cn("flex items-start justify-between gap-4 mb-4", className)}>
       <div className="min-w-0">
-        <div className="text-[15px] font-semibold tracking-tight text-[var(--axo-text)] leading-tight">
+        <div className="text-[15px] font-medium text-[var(--axo-text)] leading-tight">
           {title}
         </div>
         {description && (

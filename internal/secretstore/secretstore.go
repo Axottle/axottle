@@ -8,10 +8,8 @@
 //   - 64 hex characters
 //   - 44 base64 characters (standard or URL-safe, with or without padding)
 //
-// Anything shorter is hashed with SHA-256 to derive a 32-byte key. This
-// keeps `dev-secret-change-me-in-production` working in dev without
-// crashing the server, while still letting production deployments supply
-// a strong random 32-byte key.
+// Other strings must contain at least 32 bytes and are hashed for compatibility.
+// Length is not an entropy estimate: production keys must be randomly generated.
 //
 // We use AES-256-GCM. Each secret gets its own random 12-byte nonce. The
 // ciphertext we store is `gcm.Seal(nonce, nonce, plaintext, aad)` MINUS
@@ -62,8 +60,7 @@ type dbx interface {
 }
 
 // New derives a 32-byte AES key from the configured master and returns a
-// ready-to-use Service. Empty master is rejected: callers should pass a
-// dev placeholder so the SHA-256 fallback kicks in.
+// ready-to-use Service. Empty and short master keys are rejected.
 //
 // legacyMasters are previous master keys, newest first. They are used for
 // DECRYPTION ONLY: a row that opens under one of them is immediately
@@ -268,7 +265,7 @@ func (s *Service) open(ctx context.Context, id string, ct, nonce []byte) ([]byte
 }
 
 // deriveKey accepts hex(64), base64(44±2), raw(32), or anything else
-// (which it SHA-256s into 32 bytes). Empty master is rejected.
+// of at least 32 bytes (hashed for compatibility). Short masters are rejected.
 func deriveKey(master string) ([]byte, error) {
 	master = strings.TrimSpace(master)
 	if master == "" {
@@ -292,8 +289,10 @@ func deriveKey(master string) ([]byte, error) {
 	if len(master) == 32 {
 		return []byte(master), nil
 	}
-	// Fallback: SHA-256 the input. Lets dev defaults like
-	// `dev-secret-change-me-in-production` work without crashing.
+	if len(master) < 32 {
+		return nil, errors.New("secretstore: master key must contain at least 32 bytes; generate a random key")
+	}
+	// Preserve derivation for existing long keys.
 	h := sha256.Sum256([]byte(master))
 	return h[:], nil
 }

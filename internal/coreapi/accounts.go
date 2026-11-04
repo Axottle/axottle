@@ -44,6 +44,8 @@ func accountError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, auth.ErrAccountNotFound), errors.Is(err, projects.ErrNotFound):
 		failure(w, 404, "account not found")
+	case errors.Is(err, auth.ErrPermissionDelegation):
+		failure(w, 403, err.Error())
 	case errors.Is(err, auth.ErrUsernameTaken):
 		failure(w, 409, "username already taken")
 	case errors.Is(err, auth.ErrSuperuserProtected), errors.Is(err, auth.ErrLastAdmin), errors.Is(err, auth.ErrLastFullAdmin):
@@ -65,6 +67,12 @@ func (s *Server) accountView(r *http.Request, a auth.Admin) (map[string]any, err
 	if err != nil {
 		return nil, err
 	}
+	if actor := auth.AdminFromContext(r.Context()); actor != nil && !actor.IsBootstrapSuperuser {
+		v["project_ids"] = []string{projects.ID(r.Context())}
+		delete(v, "last_login_at")
+		delete(v, "has_password")
+		return v, nil
+	}
 	v["project_ids"] = ids
 	v["auth_methods"] = map[string]bool{"password": a.HasPassword, "totp": totp.Enabled}
 	return v, nil
@@ -82,6 +90,9 @@ func (s *Server) listAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	list := []map[string]any{}
 	for _, a := range accounts {
+		if !auth.AdminFromContext(r.Context()).IsBootstrapSuperuser && a.IsBootstrapSuperuser {
+			continue
+		}
 		if err := projects.RequireAccount(r.Context(), s.db.DB, a.ID); err != nil {
 			if errors.Is(err, projects.ErrNotFound) {
 				continue
@@ -198,8 +209,12 @@ func (s *Server) updateAccount(w http.ResponseWriter, r *http.Request) {
 			accountError(w, err)
 			return
 		}
+		if err := auth.ValidateDelegation(actor, perms); err != nil {
+			accountError(w, err)
+			return
+		}
 		req.Permissions = &perms
-		if target.IsBootstrapSuperuser && perms[0] != auth.PermissionAll {
+		if target.IsBootstrapSuperuser && !auth.HasWildcard(perms) {
 			accountError(w, auth.ErrSuperuserProtected)
 			return
 		}
@@ -256,11 +271,5 @@ func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) permissions(w http.ResponseWriter, r *http.Request) {
-	groups := []auth.PermissionGroup{}
-	for _, g := range auth.PermissionRegistry() {
-		if g.Key == "accounts" || g.Key == "settings" || g.Key == "audit" {
-			groups = append(groups, g)
-		}
-	}
-	respond(w, 200, map[string]any{"groups": groups})
+	respond(w, 200, map[string]any{"groups": auth.PermissionRegistry()})
 }
