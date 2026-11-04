@@ -13,6 +13,9 @@ import (
 //go:embed schema.sql
 var schema string
 
+//go:embed security.sql
+var securitySchema string
+
 // Migrate installs only common tables. Legacy installations must first finish
 // their existing migrations in the matching engine, which preserves all module
 // data and performs historical account conversions before this baseline opens.
@@ -50,6 +53,17 @@ func Migrate(ctx context.Context, database *sql.DB) error {
 			return fmt.Errorf("install core schema: %w", err)
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO core_schema_migrations(version) VALUES('001_common')`); err != nil {
+			return err
+		}
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM core_schema_migrations WHERE version='002_security')`).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		if _, err := tx.ExecContext(ctx, securitySchema); err != nil {
+			return fmt.Errorf("install core security schema: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO core_schema_migrations(version) VALUES('002_security')`); err != nil {
 			return err
 		}
 	}

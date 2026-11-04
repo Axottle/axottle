@@ -111,7 +111,7 @@ func (s *Service) enrichProject(ctx context.Context, p *Project, err error) (*Pr
 }
 
 func (s *Service) List(ctx context.Context) ([]Project, error) {
-	rows, err := s.db.QueryContext(ctx, projectSelect+` WHERE `+membershipPredicate(ctx)+` ORDER BY p.created_at, p.id`)
+	rows, err := s.db.QueryContext(ctx, projectSelect+` WHERE `+membershipPredicate(ctx, 1)+` ORDER BY p.created_at, p.id`, membershipPrincipal(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (s *Service) List(ctx context.Context) ([]Project, error) {
 }
 
 func (s *Service) Get(ctx context.Context, id string) (*Project, error) {
-	p, err := scanProject(s.db.QueryRowContext(ctx, projectSelect+` WHERE p.id = $1 AND `+membershipPredicate(ctx), id))
+	p, err := scanProject(s.db.QueryRowContext(ctx, projectSelect+` WHERE p.id = $1 AND `+membershipPredicate(ctx, 2), id, membershipPrincipal(ctx)))
 	return s.enrichProject(ctx, p, err)
 }
 
@@ -151,18 +151,25 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (*Pr
 	// RETURNING keeps the response tied to this write, including concurrent edits.
 	p, err := scanProject(s.db.QueryRowContext(ctx, `UPDATE projects p
  SET name=COALESCE($2,name), description=COALESCE($3,description), updated_at=NOW()
- WHERE p.id=$1 AND `+membershipPredicate(ctx)+`
- RETURNING p.id,p.name,p.description,p.created_at,p.updated_at`, id, req.Name, req.Description))
+ WHERE p.id=$1 AND `+membershipPredicate(ctx, 4)+`
+ RETURNING p.id,p.name,p.description,p.created_at,p.updated_at`, id, req.Name, req.Description, membershipPrincipal(ctx)))
 	return s.enrichProject(ctx, p, err)
 }
 
 // Background workers have no interactive principal and retain their explicit
 // workspace scope. An authenticated non-superuser must hold a current grant.
-func membershipPredicate(ctx context.Context) string {
+func membershipPrincipal(ctx context.Context) any {
 	a := auth.AdminFromContext(ctx)
 	if a == nil || a.IsBootstrapSuperuser {
-		return "TRUE"
+		return nil
 	}
-	id := strings.ReplaceAll(a.ID, "'", "''")
-	return "(EXISTS (SELECT 1 FROM admins a WHERE a.id='" + id + "' AND a.global_projects) OR EXISTS (SELECT 1 FROM admin_projects ap WHERE ap.project_id=p.id AND ap.admin_id='" + id + "'))"
+	return a.ID
+}
+
+func membershipPredicate(ctx context.Context, parameter int) string {
+	p := fmt.Sprintf("$%d", parameter)
+	if membershipPrincipal(ctx) == nil {
+		return p + "::text IS NULL"
+	}
+	return "(" + p + "::text IS NULL OR EXISTS (SELECT 1 FROM admins a WHERE a.id=" + p + " AND a.global_projects) OR EXISTS (SELECT 1 FROM admin_projects ap WHERE ap.project_id=p.id AND ap.admin_id=" + p + "))"
 }

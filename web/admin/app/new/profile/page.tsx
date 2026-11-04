@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import { TOTPWizard } from "@/components/totp-wizard";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/new/button";
 import { Card, CardHeader } from "@/components/new/card";
@@ -20,7 +20,7 @@ export default function Profile() {
     [repeat, setRepeat] = useState(""),
     [code, setCode] = useState(""),
     [confirmPassword, setConfirmPassword] = useState(""),
-    [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null),
+    [totpOpen, setTotpOpen] = useState(false),
     [passwordBusy, setPasswordBusy] = useState(false),
     [mfaBusy, setMFABusy] = useState(false),
     [error, setError] = useState("");
@@ -54,41 +54,20 @@ export default function Profile() {
       setPasswordBusy(false);
     }
   }
-  async function mfa(action: "setup" | "confirm" | "disable") {
+  async function mfa() {
     if (mfaBusy) return;
-    setMFABusy(true);
-    setError("");
+    setMFABusy(true); setError("");
     try {
-      if (action === "setup") {
-        setSetup(await request("auth/totp/setup", { method: "POST" }));
-        setCode("");
-      } else {
-        await request(
-          action === "disable" ? "auth/totp" : "auth/totp/confirm",
-          {
-            method: action === "disable" ? "DELETE" : "POST",
-            body: {
-              ...(action === "disable" ? { password: confirmPassword } : {}),
-              code,
-            },
-          },
-        );
-        setSetup(null);
-        setCode("");
-        setConfirmPassword("");
-        status.refresh();
-        toast.success(
-          text("Настройки защиты сохранены", "Security settings saved"),
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setMFABusy(false);
-    }
+      await request("auth/totp", { method: "DELETE", body: { password: confirmPassword, code } });
+      setCode(""); setConfirmPassword(""); status.refresh();
+      toast.success(text("Настройки защиты сохранены", "Security settings saved"));
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+    finally { setMFABusy(false); }
   }
+
   return (
     <>
+      <TOTPWizard open={totpOpen} onClose={() => setTotpOpen(false)} onEnabled={() => { setTotpOpen(false); status.refresh(); }} />
       <PageHeader
         title={text("Мой аккаунт", "My account")}
         description={me?.display_name || me?.username}
@@ -171,40 +150,12 @@ export default function Profile() {
                       "Add an authenticator code to your password.",
                     )}
               </p>
-              {setup && (
-                <>
-                  <div className="w-fit rounded-xl bg-white p-4">
-                    <QRCodeSVG
-                      value={setup.uri}
-                      size={180}
-                      title={text(
-                        "Код для приложения аутентификации",
-                        "Authenticator setup code",
-                      )}
-                    />
-                  </div>
-                  <FormField
-                    label={text(
-                      "Ключ для ручной настройки",
-                      "Manual setup key",
-                    )}
-                    htmlFor="totp-secret"
-                  >
-                    <Input
-                      id="totp-secret"
-                      readOnly
-                      value={setup.secret}
-                      className="font-mono"
-                    />
-                  </FormField>
-                </>
-              )}
-              {status.data?.enabled || setup ? (
+              {status.data?.enabled ? (
                 <form
                   className="space-y-4"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    void mfa(status.data?.enabled ? "disable" : "confirm");
+                    void mfa();
                   }}
                 >
                   {status.data?.enabled && (
@@ -250,7 +201,7 @@ export default function Profile() {
                   </Button>
                 </form>
               ) : (
-                <Button onClick={() => mfa("setup")} loading={mfaBusy}>
+                <Button onClick={() => setTotpOpen(true)} loading={mfaBusy}>
                   {text("Настроить защиту", "Set up protection")}
                 </Button>
               )}

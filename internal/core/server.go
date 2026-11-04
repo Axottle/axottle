@@ -5,9 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/axottle/axottle/internal/authhttp"
 	"net/http"
 	"net/netip"
+	"net/url"
+	"path"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/axottle/axottle/internal/enginebridge"
 )
@@ -25,6 +30,10 @@ type Server struct {
 	engine         *enginebridge.Client
 	proxy          http.Handler
 	trustedProxies []netip.Prefix
+	statusMu       sync.Mutex
+	statusUntil    time.Time
+	statusErr      error
+	statusDatabase bool
 }
 
 func New(cfg Config) (*Server, error) {
@@ -53,32 +62,73 @@ func (s *Server) Close() {
 	}
 }
 
-func (s *Server) engineStatus(ctx context.Context) error {
-	if s.engine == nil {
-		return nil
+// A single in-flight probe and a short TTL bound public readiness work.
+func (s *Server) readiness(ctx context.Context) (error, bool) {
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+	if time.Now().Before(s.statusUntil) {
+		return s.statusErr, s.statusDatabase
 	}
-	id, err := s.engine.Identity(ctx)
-	if err != nil {
-		return err
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	var err error
+	database := false
+	if s.engine != nil {
+		var id enginebridge.Identity
+		id, err = s.engine.Identity(ctx)
+		if err == nil {
+			err = id.Validate(s.config.Version)
+		}
 	}
-	return id.Validate(s.config.Version)
+	if err == nil && s.config.Readiness != nil {
+		err = s.config.Readiness(ctx)
+		database = err != nil
+	}
+	s.statusErr, s.statusDatabase = err, database
+	s.statusUntil = time.Now().Add(time.Second)
+	return err, database
+}
+
+// Refuse ambiguous paths before a downstream router can canonicalize them.
+// Decode nested escapes only for validation; the original URL is forwarded.
+func publicPathAllowed(u *url.URL) bool {
+	p := u.EscapedPath()
+	for i := 0; i < 8; i++ {
+		decoded, err := url.PathUnescape(p)
+		if err != nil {
+			return false
+		}
+		canonical := path.Clean(decoded)
+		if canonical == "/_axottle" || strings.HasPrefix(canonical, "/_axottle/") || strings.Contains(decoded, "\\") || strings.Contains(decoded, "//") {
+			return false
+		}
+		for _, segment := range strings.Split(decoded, "/") {
+			if segment == "." || segment == ".." {
+				return false
+			}
+		}
+		if decoded == p {
+			return true
+		}
+		p = decoded
+	}
+	return false
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Internal routes are only reachable over the engine's socket, never via
 	// the public proxy, including unrecognised future internal endpoints.
-	if strings.HasPrefix(r.URL.Path, "/_axottle/") {
+	request := s.proxyRequest(r)
+	authhttp.SecurityHeaders(w, request.URL.Scheme == "https")
+	if !publicPathAllowed(r.URL) {
 		http.NotFound(w, r)
 		return
 	}
 	if r.URL.Path == "/health" || r.URL.Path == "/api/v1/core/status" {
-		err := s.engineStatus(r.Context())
+		err, database := s.readiness(r.Context())
 		code, status := http.StatusOK, "ok"
-		if err == nil && s.config.Readiness != nil {
-			err = s.config.Readiness(r.Context())
-			if err != nil {
-				code, status = http.StatusServiceUnavailable, "database_unavailable"
-			}
+		if database {
+			code, status = http.StatusServiceUnavailable, "database_unavailable"
 		}
 		if err != nil {
 			if code == http.StatusOK {
@@ -109,7 +159,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Axottle core is running; the engine is not configured", http.StatusServiceUnavailable)
 		return
 	}
-	if err := s.engineStatus(r.Context()); err != nil {
+	if err, _ := s.readiness(r.Context()); err != nil {
 		http.Error(w, "Axottle engine is unavailable or incompatible", http.StatusServiceUnavailable)
 		return
 	}

@@ -2,6 +2,7 @@
 package authhttp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/axottle/axottle/internal/auth"
@@ -14,6 +15,7 @@ import (
 
 const SessionCookieName = "axo_session"
 const AuthFlagCookieName = "axo_authed"
+const NativeSessionHeader = "X-Axottle-Session"
 
 type Handler struct {
 	Auth       *auth.Service
@@ -21,6 +23,7 @@ type Handler struct {
 	LoginGuard *auth.LoginGuard
 	PublicURL  string
 	ClientIP   func(*http.Request) string
+	Audit      func(context.Context, string, string, string)
 }
 
 func (s *Handler) clientIP(r *http.Request) string {
@@ -70,6 +73,7 @@ func (s *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	// IP. The lockout window expires on its own, so a legitimate user recovers.
 	guardKey := req.Username + "|" + s.clientIP(r)
 	if s.LoginGuard.Locked(guardKey) {
+		s.log(r, "auth.login.throttled", req.Username, "failed")
 		writeError(w, http.StatusTooManyRequests,
 			"too many failed login attempts; please try again later")
 		return
@@ -91,6 +95,7 @@ func (s *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		// so the guard is left alone.
 		var denied *auth.AccessDeniedError
 		if errors.As(err, &denied) {
+			s.log(r, "auth.login.denied", req.Username, "failed")
 			s.LoginGuard.Reset(guardKey)
 			writeJSON(w, http.StatusForbidden, map[string]string{
 				"error": denied.Reason,
@@ -98,6 +103,7 @@ func (s *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+		s.log(r, "auth.login.failed", req.Username, "failed")
 		s.LoginGuard.Fail(guardKey)
 		if errors.Is(err, auth.ErrSecretsUnavailable) {
 			writeError(w, http.StatusServiceUnavailable, "two-factor authentication is temporarily unavailable")
@@ -107,21 +113,17 @@ func (s *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.LoginGuard.Reset(guardKey)
+	s.log(r, "auth.login.succeeded", req.Username, "ok")
 
-	// Seal the setup surface on the first successful login: the setup wizard
-	// runs entirely before any login, so this closes the public /setup/*
-	// mutators once the panel is actually operating. Idempotent.
+	// Idempotently preserve the closed setup surface for authenticated installations.
 	if s.Setup != nil {
 		s.Setup.MarkSealed(r.Context())
 	}
 
-	// Set the browser session cookie (§9). The token is still returned in the
-	// body for CLI/Bearer clients, but browser sessions live in an HttpOnly
-	// cookie and never touch localStorage.
+	// The browser receives its credential only through an HttpOnly cookie.
 	s.SetSessionCookie(w, r, session)
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token":      session.Token,
 		"expires_at": session.ExpiresAt,
 	})
 }
@@ -138,6 +140,9 @@ func (s *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if a := auth.AdminFromContext(r.Context()); a != nil {
+		s.log(r, "auth.logout", a.Username, "ok")
+	}
 	// Clear the browser session cookie (harmless for Bearer clients).
 	s.ClearSessionCookie(w, r)
 
@@ -183,9 +188,16 @@ func (s *Handler) Middleware(next http.Handler) http.Handler {
 }
 
 // RequestToken returns the session token and whether it came from the browser
-// cookie (vs a Bearer header). Bearer wins when both are present, so a CLI token
-// is never shadowed by a stale cookie.
+// cookie (vs an explicit header). Native sessions use their own header so an
+// upstream gateway can retain Authorization. A present native header disables
+// fallbacks; without it, requests use Bearer followed by the browser cookie.
 func (s *Handler) RequestToken(r *http.Request) (token string, viaCookie bool) {
+	if values, present := r.Header[http.CanonicalHeaderKey(NativeSessionHeader)]; present {
+		if len(values) != 1 || len(values[0]) > 512 || strings.ContainsAny(values[0], " \t\r\n") {
+			return "", false
+		}
+		return values[0], false
+	}
 	if t := auth.TokenFromRequest(r); t != "" {
 		return t, false
 	}
@@ -209,47 +221,43 @@ func IsUnsafeMethod(m string) bool {
 // Referer. A request with neither header is rejected — every browser sends one
 // on a state-changing fetch/navigation.
 func (s *Handler) SameOriginRequest(r *http.Request) bool {
-	check := func(raw string) (bool, bool) {
-		if raw == "" {
-			return false, false
-		}
-		u, err := url.Parse(raw)
-		if err != nil || u.Host == "" {
-			return false, true // present but unparseable → treated as mismatch
-		}
-		return strings.EqualFold(u.Host, r.Host) || strings.EqualFold(u.Host, s.PublicHost()), true
+	if origin := r.Header.Get("Origin"); origin != "" {
+		return s.OriginAllowsCredentials(origin, r)
 	}
-	if ok, present := check(r.Header.Get("Origin")); present {
-		return ok
-	}
-	if ok, present := check(r.Header.Get("Referer")); present {
-		return ok
+	if referer := r.Header.Get("Referer"); referer != "" {
+		return s.OriginAllowsCredentials(referer, r)
 	}
 	return false
 }
 
-// PublicHost is the host of the configured public URL, for matching an Origin
-// when the panel sits behind a proxy that rewrites Host.
 func (s *Handler) PublicHost() string {
-	if s.PublicURL == "" {
-		return ""
-	}
 	if u, err := url.Parse(s.PublicURL); err == nil {
 		return u.Host
 	}
 	return ""
 }
 
-// OriginAllowsCredentials reports whether a CORS Origin may receive credentialed
-// responses: only the panel's own origin (same host as the request, or the
-// configured public URL's host). Everything else is a public, credential-less
-// CORS caller (Bearer clients, unauthenticated endpoints).
 func (s *Handler) OriginAllowsCredentials(origin string, r *http.Request) bool {
 	u, err := url.Parse(origin)
-	if err != nil || u.Host == "" {
+	if err != nil || u.Host == "" || u.User != nil || (u.Scheme != "http" && u.Scheme != "https") {
 		return false
 	}
-	return strings.EqualFold(u.Host, r.Host) || (s.PublicHost() != "" && strings.EqualFold(u.Host, s.PublicHost()))
+	// A configured public URL is authoritative even when a TLS proxy rewrites Host.
+	if s.PublicURL != "" {
+		public, err := url.Parse(s.PublicURL)
+		return err == nil && public.Host != "" && strings.EqualFold(u.Host, public.Host) && strings.EqualFold(u.Scheme, public.Scheme)
+	}
+	scheme := "http"
+	if s.IsSecureRequest(r) {
+		scheme = "https"
+	}
+	return strings.EqualFold(u.Host, r.Host) && strings.EqualFold(u.Scheme, scheme)
+}
+
+func (s *Handler) log(r *http.Request, action, username, status string) {
+	if s.Audit != nil {
+		s.Audit(r.Context(), action, username, status)
+	}
 }
 
 func (s *Handler) IsSecureRequest(r *http.Request) bool {

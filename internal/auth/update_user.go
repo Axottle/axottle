@@ -17,6 +17,9 @@ type UpdateUserInput struct {
 // UpdateUser commits profile, permissions, memberships and module extensions
 // together. A failed grant, extension or audit write leaves no partial edit.
 func (s *Service) UpdateUser(ctx context.Context, id string, in UpdateUserInput, provisioners ...ProvisionUser) (*Admin, error) {
+	if err := s.authorizeAccountEdit(ctx, id); err != nil {
+		return nil, err
+	}
 	if in.Status != nil && *in.Status != "active" && *in.Status != "invited" && *in.Status != "disabled" {
 		return nil, fmt.Errorf("invalid account status")
 	}
@@ -24,6 +27,9 @@ func (s *Service) UpdateUser(ctx context.Context, id string, in UpdateUserInput,
 	if in.Permissions != nil {
 		p, err := NormalizePermissions(*in.Permissions)
 		if err != nil {
+			return nil, err
+		}
+		if err := ValidateDelegation(AdminFromContext(ctx), p); err != nil {
 			return nil, err
 		}
 		in.Permissions = &p
@@ -53,10 +59,10 @@ func (s *Service) UpdateUser(ctx context.Context, id string, in UpdateUserInput,
 		}
 		return nil, err
 	}
-	if current.IsBootstrapSuperuser && (in.ProjectIDs != nil || in.Status != nil && *in.Status != "active" || in.Permissions != nil && (*in.Permissions)[0] != PermissionAll) {
+	if current.IsBootstrapSuperuser && (in.ProjectIDs != nil || in.Status != nil && *in.Status != "active" || in.Permissions != nil && !HasWildcard(*in.Permissions)) {
 		return nil, ErrSuperuserProtected
 	}
-	if in.Permissions != nil && (*in.Permissions)[0] != PermissionAll {
+	if in.Permissions != nil && !HasWildcard(*in.Permissions) {
 		var others int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM admins WHERE id<>$1 AND permissions @> '["*"]'::jsonb`, id).Scan(&others); err != nil {
 			return nil, err
@@ -99,6 +105,9 @@ func (s *Service) UpdateUser(ctx context.Context, id string, in UpdateUserInput,
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
+	}
+	if in.Status != nil && *in.Status == "disabled" {
+		s.recordSecurityEvent(ctx, "auth.sessions.revoked", id)
 	}
 	return &current, nil
 }

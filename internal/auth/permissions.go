@@ -6,19 +6,14 @@ import (
 	"strings"
 )
 
-// Permission identifies a single panel capability an admin account may hold,
-// e.g. "nodes.edit". Permissions are stored per-account (admins.permissions,
-// JSONB array of strings) and checked on every request by the route guards in
-// internal/server. The special value PermissionAll grants every capability,
-// including ones added in future releases; it is what every pre-RBAC account
-// is backfilled with, so upgrading changes nothing until an operator narrows
-// an account explicitly.
+// Permission identifies an explicit panel capability.
 type Permission string
 
-// PermissionAll is the wildcard entry meaning "full administrator access".
-// NormalizePermissions collapses any list containing it to exactly ["*"], so
-// full access is always stored in one canonical shape.
+// PermissionAll grants known project capabilities. It cannot authorize global
+// settings, backups, audit or future capabilities. Installation-wide authority
+// requires the separate global.admin grant or the protected bootstrap account.
 const PermissionAll = "*"
+const PermissionGlobalAdmin = "global.admin"
 
 const (
 	// Nodes — the node fleet, agents, install recipes, maintenance.
@@ -39,6 +34,12 @@ const (
 	// contexts and app parameter sets (subscription shaping).
 	PermRemnawaveView   Permission = "remnawave.view"
 	PermRemnawaveManage Permission = "remnawave.manage"
+
+	// Customer accounts and Internal Squads in the selected project.
+	PermSubscribersView   Permission = "subscribers.view"
+	PermSubscribersManage Permission = "subscribers.manage"
+	PermGroupsView        Permission = "subscriber_groups.view"
+	PermGroupsManage      Permission = "subscriber_groups.manage"
 
 	// GeoAssets library + per-node assignment/sync.
 	PermGeoAssetsView   Permission = "geo_assets.view"
@@ -81,9 +82,7 @@ const (
 	// Administrator audit journal.
 	PermAuditView Permission = "audit.view"
 
-	// Panel admin accounts. A single grant: whoever manages accounts can
-	// grant themselves anything anyway, so a separate "view" tier would be
-	// security theatre.
+	// Panel accounts. Managers may delegate only capabilities they already hold.
 	PermAccountsManage Permission = "accounts.manage"
 
 	// General panel settings: notifications, integrations, panel/agent
@@ -131,9 +130,12 @@ type PermissionGroup struct {
 // list.
 func PermissionRegistry() []PermissionGroup {
 	return []PermissionGroup{
+		{Key: "global", Permissions: []Permission{Permission(PermissionGlobalAdmin)}},
 		{Key: "nodes", Permissions: []Permission{PermNodesView, PermNodesCreate, PermNodesEdit, PermNodesDelete, PermNodesOperate}},
 		{Key: "connection_units", Permissions: []Permission{PermUnitsView, PermUnitsCreate, PermUnitsEdit, PermUnitsDelete, PermUnitsApply}},
 		{Key: "remnawave", Permissions: []Permission{PermRemnawaveView, PermRemnawaveManage}},
+		{Key: "subscribers", Permissions: []Permission{PermSubscribersView, PermSubscribersManage}},
+		{Key: "subscriber_groups", Permissions: []Permission{PermGroupsView, PermGroupsManage}},
 		{Key: "geo_assets", Permissions: []Permission{PermGeoAssetsView, PermGeoAssetsManage}},
 		{Key: "health", Permissions: []Permission{PermHealthView, PermHealthManage}},
 		{Key: "abuse", Permissions: []Permission{PermAbuseView, PermAbuseManage}},
@@ -168,13 +170,11 @@ var knownPermissions = func() map[Permission]struct{} {
 }()
 
 // NormalizePermissions validates and canonicalises a permission list coming
-// from the API: entries are trimmed and de-duplicated, any list containing
-// the wildcard collapses to exactly ["*"], unknown entries are rejected, and
-// nil/empty input means full access (the pre-RBAC default, which also keeps
-// older API clients that never send the field working unchanged).
+// from the API: entries are trimmed and de-duplicated, unknown entries are
+// rejected, and nil/empty input grants no capabilities. Global access must be explicit.
 func NormalizePermissions(perms []string) ([]string, error) {
 	if len(perms) == 0 {
-		return []string{PermissionAll}, nil
+		return []string{}, nil
 	}
 	seen := make(map[string]struct{}, len(perms))
 	out := make([]string, 0, len(perms))
@@ -183,8 +183,13 @@ func NormalizePermissions(perms []string) ([]string, error) {
 		if p == "" {
 			continue
 		}
+
 		if p == PermissionAll {
-			return []string{PermissionAll}, nil
+			if _, dup := seen[p]; !dup {
+				seen[p] = struct{}{}
+				out = append(out, p)
+			}
+			continue
 		}
 		if _, ok := knownPermissions[Permission(p)]; !ok {
 			return nil, fmt.Errorf("%w: %q", ErrUnknownPermission, p)
@@ -198,33 +203,85 @@ func NormalizePermissions(perms []string) ([]string, error) {
 	if len(out) == 0 {
 		return nil, ErrNoPermissions
 	}
+	if _, global := seen[PermissionGlobalAdmin]; global {
+		return []string{PermissionGlobalAdmin}, nil
+	}
 	sort.Strings(out)
 	return out, nil
 }
 
 // Can reports whether the admin holds the given permission (directly or via
-// the full-access wildcard). A nil admin can do nothing.
+// a scoped wildcard or an explicit global grant). A nil admin can do nothing.
 func (a *Admin) Can(perm Permission) bool {
 	if a == nil {
 		return false
 	}
 	for _, p := range a.Permissions {
-		if p == PermissionAll || p == string(perm) {
+		if p == PermissionGlobalAdmin || p == PermissionAll && (a.IsBootstrapSuperuser || ProjectPermission(perm)) || p == string(perm) {
 			return true
 		}
 	}
 	return false
 }
 
-// FullAccess reports whether the account holds the wildcard grant.
+// FullAccess reports installation-wide authority, independent of project membership.
 func (a *Admin) FullAccess() bool {
 	if a == nil {
 		return false
 	}
 	for _, p := range a.Permissions {
+		if p == PermissionGlobalAdmin || p == PermissionAll && a.IsBootstrapSuperuser {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateDelegation prevents account managers from minting privileges they do
+// not hold. Only the protected installation owner may delegate the global
+// grant; project membership does not limit that grant's authority.
+func ValidateDelegation(actor *Admin, permissions []string) error {
+	if actor == nil || actor.IsBootstrapSuperuser {
+		return nil
+	}
+	for _, p := range permissions {
+		if p == PermissionGlobalAdmin {
+			return ErrPermissionDelegation
+		}
+		if p == PermissionAll {
+			for known := range knownPermissions {
+				if ProjectPermission(known) && !actor.Can(known) {
+					return ErrPermissionDelegation
+				}
+			}
+			continue
+		}
+		if !actor.Can(Permission(p)) {
+			return ErrPermissionDelegation
+		}
+	}
+	return nil
+}
+
+// HasWildcard checks a normalized permission list, including an empty list.
+func HasWildcard(permissions []string) bool {
+	for _, p := range permissions {
 		if p == PermissionAll {
 			return true
 		}
+	}
+	return false
+}
+
+// ProjectPermission is a positive allowlist: a new capability never silently
+// joins the project wildcard. Its resource handlers must also enforce membership.
+func ProjectPermission(p Permission) bool {
+	switch p {
+	case PermAccountsManage, PermNodesView, PermNodesCreate, PermNodesEdit, PermNodesDelete, PermNodesOperate,
+		PermUnitsView, PermUnitsCreate, PermUnitsEdit, PermUnitsDelete, PermUnitsApply,
+		PermRemnawaveView, PermRemnawaveManage, PermSupportAccess,
+		PermSubscribersView, PermSubscribersManage, PermGroupsView, PermGroupsManage:
+		return true
 	}
 	return false
 }

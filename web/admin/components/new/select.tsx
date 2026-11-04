@@ -149,6 +149,8 @@ export function Select({
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const openingEdge = useRef<"first" | "last">("first");
+  const menuReady = open && menuPosition !== null;
   const id = useId();
   const resolvedPlaceholder =
     placeholder ?? t("select.placeholder", "Выберите...");
@@ -222,6 +224,19 @@ export function Select({
       window.removeEventListener("scroll", updatePosition, true);
     };
   }, [align, open]);
+
+  useEffect(() => {
+    if (!menuReady || searchable) return;
+    const items = menuRef.current?.querySelectorAll<HTMLButtonElement>(
+      '[role="option"]:not(:disabled)',
+    );
+    const selected = menuRef.current?.querySelector<HTMLButtonElement>(
+      '[role="option"][aria-selected="true"]:not(:disabled)',
+    );
+    // Options are outside the dialog's focus trap, so opening the menu must
+    // move focus into it instead of leaving keyboard users on the trigger.
+    (selected ?? items?.[openingEdge.current === "last" ? items.length - 1 : 0])?.focus();
+  }, [menuReady, searchable]);
 
   useEffect(() => {
     if (!open) return;
@@ -313,6 +328,7 @@ export function Select({
                       }
                       if (event.key === "Tab") {
                         event.preventDefault();
+                        event.stopPropagation();
                         setOpen(false);
                         triggerRef.current?.focus();
                       }
@@ -324,13 +340,13 @@ export function Select({
                 role="listbox"
                 aria-labelledby={id}
                 onKeyDown={(event) => {
-                  if (!searchable) return;
                   if (event.key === "Tab") {
                     event.preventDefault();
+                    event.stopPropagation();
                     setOpen(false);
                     triggerRef.current?.focus();
                   }
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
                     event.preventDefault();
                     const items = Array.from(
                       menuRef.current?.querySelectorAll<HTMLButtonElement>(
@@ -340,12 +356,12 @@ export function Select({
                     const index = items.indexOf(
                       document.activeElement as HTMLButtonElement,
                     );
-                    items[
-                      (index +
-                        (event.key === "ArrowDown" ? 1 : -1) +
-                        items.length) %
-                        items.length
-                    ]?.focus();
+                    const next = event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? items.length - 1
+                        : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+                    items[next]?.focus();
                   }
                 }}
               >
@@ -423,7 +439,16 @@ export function Select({
         type="button"
         id={id}
         disabled={disabled}
-        onClick={() => setOpen((p) => !p)}
+        onClick={() => {
+          openingEdge.current = "first";
+          setOpen((p) => !p);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          event.preventDefault();
+          openingEdge.current = event.key === "ArrowUp" ? "last" : "first";
+          setOpen(true);
+        }}
         className={cn(
           "axo-focus-ring w-full inline-flex items-center justify-between gap-2 text-left",
           "cursor-pointer disabled:cursor-not-allowed",

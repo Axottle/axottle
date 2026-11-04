@@ -47,8 +47,8 @@ const wrapOnPhone =
 
 const sizes: Record<Size, string> = {
   sm: `h-8 px-3 text-[13px] rounded-[12px] ${wrapOnPhone} max-sm:min-h-9`,
-  md: `h-10 px-4 text-sm rounded-[14px] ${wrapOnPhone}`,
-  lg: `h-12 px-5 text-[15px] rounded-[16px] ${wrapOnPhone} max-sm:min-h-12`,
+  md: `h-10 px-4 text-sm rounded-[12px] ${wrapOnPhone}`,
+  lg: `h-12 px-5 text-[15px] rounded-[14px] ${wrapOnPhone} max-sm:min-h-12`,
   icon: "h-9 w-9 rounded-[12px] shrink-0",
 };
 
@@ -59,8 +59,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <motion.button
       ref={ref}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.12, ease: "easeOut" }}
       className={cn(base, variants[variant], sizes[size], className)}
       disabled={disabled || loading}
       {...rest}
