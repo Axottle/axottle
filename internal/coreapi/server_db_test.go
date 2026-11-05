@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axottle/axottle/internal/audit"
 	"github.com/axottle/axottle/internal/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -40,7 +41,7 @@ func standaloneDB(t *testing.T) (*Server, Config) {
 	// must never satisfy a missing core dependency accidentally.
 	config.RuntimeParams["search_path"] = schema
 	registered := stdlib.RegisterConnConfig(config)
-	cfg := Config{DatabaseURL: registered, SecretKey: strings.Repeat("a", 64), PublicURL: "http://core.example", Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	cfg := Config{DataDir: t.TempDir(), DatabaseURL: registered, SecretKey: strings.Repeat("a", 64), PublicURL: "http://core.example", Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	s, err := Open(t.Context(), cfg)
 	if err != nil {
 		_, _ = admin.Exec(`DROP SCHEMA ` + schema + ` CASCADE`)
@@ -48,7 +49,13 @@ func standaloneDB(t *testing.T) (*Server, Config) {
 		stdlib.UnregisterConnConfig(registered)
 		t.Fatal(err)
 	}
+	rawToken, err := os.ReadFile(cfg.DataDir + "/bootstrap.token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testBootstrapTokens[s] = strings.TrimSpace(string(rawToken))
 	t.Cleanup(func() {
+		delete(testBootstrapTokens, s)
 		s.Close()
 		_, err := admin.Exec(`DROP SCHEMA ` + schema + ` CASCADE`)
 		if err != nil {
@@ -62,6 +69,9 @@ func standaloneDB(t *testing.T) (*Server, Config) {
 
 func call(s http.Handler, method, path, body, token, origin string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(method, "http://core.example"+path, strings.NewReader(body))
+	if srv, ok := s.(*Server); ok && path == "/api/v1/setup/admin" {
+		r.Header.Set("X-Axottle-Setup-Token", srv.setupTokenForTest())
+	}
 	if token != "" {
 		r.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -86,7 +96,7 @@ func TestStandaloneCoreWithoutPrivateTablesDB(t *testing.T) {
 	w := call(s, "POST", "/api/v1/auth/login", `{"username":"owner","password":"core-only-password"}`, "", "")
 	assert(w, 200)
 	var session auth.Session
-	if err := json.Unmarshal(w.Body.Bytes(), &session); err != nil || session.Token == "" {
+	if err := json.Unmarshal(w.Body.Bytes(), &session); err != nil || session.Token != "" {
 		t.Fatalf("login: %s %v", w.Body.String(), err)
 	}
 	var cookie *http.Cookie
@@ -98,6 +108,7 @@ func TestStandaloneCoreWithoutPrivateTablesDB(t *testing.T) {
 	if cookie == nil || !cookie.HttpOnly || cookie.SameSite != http.SameSiteLaxMode {
 		t.Fatal("browser session cookie protection lost")
 	}
+	session.Token = cookie.Value
 	assert(call(s, "GET", "/api/v1/auth/me", "", session.Token, ""), 200)
 	assert(call(s, "POST", "/api/v1/setup/admin", `{"username":"intruder","password":"core-only-password"}`, "", ""), 403)
 	w = call(s, "POST", "/api/v1/projects", `{"name":"Standalone","description":"No infrastructure"}`, session.Token, "")
@@ -259,9 +270,9 @@ func TestStandaloneAccountHTTPAndProjectBoundariesDB(t *testing.T) {
 		check(call(s, "PATCH", "/api/v1/auth/accounts/"+id, `{"display_name":"forged"}`, manager.Token, ""), 404)
 	}
 	check(call(s, "PATCH", "/api/v1/auth/accounts/"+managerID, `{"permissions":["settings.view"]}`, manager.Token, ""), 400)
-	check(call(s, "PATCH", "/api/v1/auth/accounts/"+editableID, `{"display_name":"Edited","permissions":["settings.view","audit.view"]}`, manager.Token, ""), 200)
+	check(call(s, "PATCH", "/api/v1/auth/accounts/"+editableID, `{"display_name":"Edited","permissions":["nodes.view","accounts.manage"]}`, manager.Token, ""), 200)
 	updated, err := s.auth.GetAccount(t.Context(), editableID)
-	if err != nil || updated.DisplayName != "Edited" || !updated.Can(auth.PermAuditView) {
+	if err != nil || updated.DisplayName != "Edited" || !updated.Can(auth.PermNodesView) {
 		t.Fatalf("edit did not persist: %+v %v", updated, err)
 	}
 	// Invalid project grants must be rejected before the profile is written.
@@ -325,5 +336,143 @@ func TestAtomicUserEditRollsBackFieldsGrantsAndSessionRevocationDB(t *testing.T)
 	}
 	if _, err := s.auth.ValidateToken(t.Context(), session.Token); err != nil {
 		t.Fatalf("rolled-back edit revoked session: %v", err)
+	}
+}
+
+func (s *Server) setupTokenForTest() string {
+	// Config is intentionally not exposed through the public HTTP surface.
+	return testBootstrapTokens[s]
+}
+
+var testBootstrapTokens = map[*Server]string{}
+
+func TestSecurityBoundariesDB(t *testing.T) {
+	s, _ := standaloneDB(t)
+	raw := httptest.NewRequest("POST", "http://core.example/api/v1/setup/admin", strings.NewReader(`{"username":"intruder","password":"intruder-password"}`))
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, raw)
+	if w.Code != 403 {
+		t.Fatalf("public bootstrap=%d", w.Code)
+	}
+	w = call(s, "POST", "/api/v1/setup/admin", `{"username":" owner ","password":"owner-password"}`, "", "")
+	if w.Code != 201 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	if !s.setup.IsSealed(t.Context()) {
+		t.Fatal("bootstrap stayed open before login")
+	}
+	owner, err := s.auth.Login(t.Context(), "owner", "owner-password", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.projects.Create(t.Context(), "Security", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager, err := s.auth.CreateUser(t.Context(), auth.CreateUserInput{Username: "manager", Password: "manager-password", Permissions: []string{"accounts.manage"}, ProjectIDs: []string{p.ID}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := s.auth.Login(t.Context(), "manager", "manager-password", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, permissions := range []string{`["*"]`, `["global.admin"]`, `["settings.manage"]`} {
+		body := fmt.Sprintf(`{"username":"bad","password":"bad-password","project_ids":[%q],"permissions":%s}`, p.ID, permissions)
+		w = call(s, "POST", "/api/v1/auth/accounts", body, session.Token, "")
+		if w.Code != 403 {
+			t.Fatalf("delegation %s=%d %s", permissions, w.Code, w.Body)
+		}
+	}
+	for i, permissionField := range []string{"", `,"permissions":[]`} {
+		body := fmt.Sprintf(`{"username":"empty%d","password":"empty-password","project_ids":[%q]%s}`, i, p.ID, permissionField)
+		w = call(s, "POST", "/api/v1/auth/accounts", body, session.Token, "")
+		if w.Code != 201 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		var created struct {
+			ID          string
+			Permissions []string
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+			t.Fatal(err)
+		}
+		if len(created.Permissions) != 0 {
+			t.Fatal("empty permission request gained authority")
+		}
+		w = call(s, "PATCH", "/api/v1/auth/accounts/"+created.ID, `{"permissions":[]}`, session.Token, "")
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+	}
+	w = call(s, "GET", "/api/v1/auth/accounts", "", session.Token, "")
+	if strings.Contains(w.Body.String(), `"username":"owner"`) || strings.Contains(w.Body.String(), "last_login_at") || strings.Contains(w.Body.String(), "auth_methods") {
+		t.Fatal("project account metadata leak", w.Body.String())
+	}
+	// A direct status change must revoke the authority of an existing session.
+	if _, err := s.db.Exec(`UPDATE admins SET status='disabled' WHERE id=$1`, manager.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.auth.ValidateToken(t.Context(), session.Token); err == nil {
+		t.Fatal("disabled session accepted")
+	}
+	for range 5 {
+		w = call(s, "POST", "/api/v1/auth/totp/setup", `{"password":"incorrect"}`, owner.Token, "")
+		if w.Code == 200 {
+			t.Fatal("session alone enrolled MFA")
+		}
+	}
+	w = call(s, "POST", "/api/v1/auth/totp/setup", `{"password":"owner-password"}`, owner.Token, "")
+	if w.Code != 429 {
+		t.Fatalf("TOTP throttle=%d %s", w.Code, w.Body)
+	}
+}
+
+func TestAuditIntegrityDB(t *testing.T) {
+	s, _ := standaloneDB(t)
+	s.audit.Log(t.Context(), audit.Entry{ActorType: "system", ActorID: "test", Action: "security.test", ResourceType: "test"})
+	head, err := audit.VerifyIntegrity(t.Context(), s.db.DB)
+	if err != nil || head.Sequence == 0 || head.Hash == "" {
+		t.Fatalf("head=%+v error=%v", head, err)
+	}
+	if _, err := s.db.Exec(`UPDATE audit_log SET action='changed'`); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := audit.VerifyIntegrity(t.Context(), s.db.DB)
+	if err != nil || changed.Sequence <= head.Sequence || changed.Hash == head.Hash {
+		t.Fatalf("audit mutation was not recorded: %+v %v", changed, err)
+	}
+	if _, err := s.db.Exec(`UPDATE audit_integrity SET payload_hash='forged'`); err == nil {
+		t.Fatal("integrity history is mutable")
+	}
+	if _, err := s.db.Exec(`ALTER TABLE audit_log DISABLE TRIGGER audit_integrity_record; UPDATE audit_log SET action='unrecorded'; ALTER TABLE audit_log ENABLE TRIGGER audit_integrity_record`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := audit.VerifyIntegrity(t.Context(), s.db.DB); err == nil {
+		t.Fatal("unrecorded audit rewrite not detected")
+	}
+}
+
+func TestAuditIntegrityTimezoneAndUnrecordedInsertDB(t *testing.T) {
+	s, _ := standaloneDB(t)
+	tx, err := s.db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`SET LOCAL TIME ZONE 'Asia/Yekaterinburg'; INSERT INTO audit_log(actor_type,actor_id,action) VALUES('system','test','timezone.test')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := audit.VerifyIntegrity(t.Context(), s.db.DB); err != nil {
+		t.Fatalf("timezone-dependent integrity hash: %v", err)
+	}
+	if _, err := s.db.Exec(`ALTER TABLE audit_log DISABLE TRIGGER audit_integrity_record; INSERT INTO audit_log(actor_type,actor_id,action) VALUES('system','test','unrecorded'); ALTER TABLE audit_log ENABLE TRIGGER audit_integrity_record`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := audit.VerifyIntegrity(t.Context(), s.db.DB); err == nil {
+		t.Fatal("unrecorded audit insertion not detected")
 	}
 }

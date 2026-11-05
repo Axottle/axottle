@@ -10,12 +10,13 @@ import {
 import { request } from "@/lib/api";
 import { useText } from "@/lib/state";
 import { uiAsset } from "@/lib/ui-assets";
-type Step = "username" | "password" | "review";
+type Step = "token" | "username" | "password" | "review";
 export default function Setup() {
   const text = useText(),
     writing = useRef(false);
   const [open, setOpen] = useState(false),
-    [step, setStep] = useState<Step>("username"),
+    [step, setStep] = useState<Step>("token"),
+    [setupToken, setSetupToken] = useState(""),
     [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [repeat, setRepeat] = useState(""),
@@ -37,6 +38,7 @@ export default function Setup() {
     return () => abort.abort();
   }, []);
   const steps: WizardStep<Step>[] = [
+    { id: "token", label: text("Ключ", "Key"), heading: text("Подтвердите владение установкой", "Confirm installation ownership"), hint: text("Прочитайте bootstrap.token в каталоге данных Axottle на сервере и введите ключ. Не передавайте его другим людям.", "Read bootstrap.token in the Axottle data directory on the server and enter the key. Keep it private.") },
     {
       id: "username",
       label: text("Владелец", "Owner"),
@@ -71,6 +73,7 @@ export default function Setup() {
   async function next() {
     if (writing.current) return;
     setError("");
+    if (step === "token") { if (!setupToken.trim()) { setError(text("Введите ключ настройки", "Enter the setup key")); return; } setStep("username"); return; }
     if (step === "username") {
       if (!username.trim()) {
         setError(text("Укажите имя пользователя", "Enter a username"));
@@ -98,6 +101,7 @@ export default function Setup() {
     try {
       await request("setup/admin", {
         method: "POST",
+        setupToken: setupToken.trim(),
         body: { username: username.trim(), password },
       });
       setPassword("");
@@ -139,9 +143,9 @@ export default function Setup() {
           <>
             <Button
               variant="ghost"
-              disabled={busy || step === "username"}
+              disabled={busy || step === "token"}
               onClick={() =>
-                setStep(step === "review" ? "password" : "username")
+                setStep(step === "review" ? "password" : step === "password" ? "username" : "token")
               }
             >
               {text("Назад", "Back")}
@@ -157,9 +161,10 @@ export default function Setup() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void next();
+            if (step !== "review") void next();
           }}
         >
+          {step === "token" && <FormField label={text("Ключ первичной настройки", "Bootstrap key")} htmlFor="setup-token"><Input id="setup-token" type="password" autoComplete="off" value={setupToken} onChange={e => setSetupToken(e.target.value)} disabled={busy} /></FormField>}
           {step === "username" && (
             <FormField
               label={text("Имя пользователя", "Username")}

@@ -41,6 +41,7 @@ type State struct {
 }
 
 type Service struct {
+	bootstrapToken string
 	db             *db.DB
 	logger         *slog.Logger
 	enrichState    func(context.Context, *State) error
@@ -105,6 +106,10 @@ func (s *Service) SetMode(ctx context.Context, mode OperatingMode) error {
 }
 
 func (s *Service) CreateAdmin(ctx context.Context, username, password string) error {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return fmt.Errorf("username is required")
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -131,7 +136,10 @@ func (s *Service) CreateAdmin(ctx context.Context, username, password string) er
 	// The install-time account is the protected bootstrap superuser (§3): full
 	// access, active, and flagged so no path can delete, disable or narrow it.
 	// A single-superuser partial unique index (migration 085) backs this up.
-	id := generateID()
+	id, err := generateID()
+	if err != nil {
+		return fmt.Errorf("generate admin ID: %w", err)
+	}
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO admins (id, username, display_name, password_hash, role, permissions, status, is_bootstrap_superuser)
 		 VALUES ($1, $2, $2, $3, 'admin', '["*"]'::jsonb, 'active', TRUE)`,
@@ -145,6 +153,9 @@ func (s *Service) CreateAdmin(ctx context.Context, username, password string) er
 		if err := s.provisionAdmin(ctx, tx, id, username); err != nil {
 			return err
 		}
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO setup_state(key,completed,data_json,updated_at) VALUES('sealed',TRUE,'{"sealed":true}'::jsonb,NOW()) ON CONFLICT(key) DO UPDATE SET completed=TRUE,updated_at=NOW()`); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
@@ -217,11 +228,8 @@ func (s *Service) CheckDNS(ctx context.Context, domain string) (*DNSCheckResult,
 	return result, nil
 }
 
-// MarkSealed permanently closes the unauthenticated /setup/* mutators. It is
-// called on the first successful admin login. The setup wizard runs entirely
-// BEFORE that login (admin → login), so
-// sealing on login closes the bootstrap window without ever breaking the
-// wizard. Idempotent.
+// MarkSealed idempotently closes bootstrap for installations whose owner
+// already exists. CreateAdmin also seals in its creation transaction.
 func (s *Service) MarkSealed(ctx context.Context) {
 	s.markStepComplete(ctx, "sealed", map[string]bool{"sealed": true})
 }
@@ -231,7 +239,9 @@ func (s *Service) MarkSealed(ctx context.Context) {
 // panel cannot have its domain/TLS or mode reconfigured by an
 // unauthenticated caller.
 func (s *Service) IsSealed(ctx context.Context) bool {
-	return s.isStepComplete(ctx, "sealed")
+	var closed bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM admins) OR EXISTS(SELECT 1 FROM setup_state WHERE key='sealed' AND completed)`).Scan(&closed)
+	return err != nil || closed
 }
 
 func (s *Service) isStepComplete(ctx context.Context, key string) bool {
@@ -275,8 +285,10 @@ func (s *Service) getSettingString(ctx context.Context, key string) string {
 	return s2
 }
 
-func generateID() string {
+func generateID() (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }

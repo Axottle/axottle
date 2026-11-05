@@ -36,6 +36,9 @@ type ProvisionUser func(context.Context, *sql.Tx, *Admin) error
 // At least one login method must exist before commit. A provisioner may add a
 // linked identity; its provider implementation remains outside the core.
 func (s *Service) CreateUser(ctx context.Context, in CreateUserInput, provisioners ...ProvisionUser) (*Admin, error) {
+	if actor := AdminFromContext(ctx); in.GlobalProjects && actor != nil && !actor.IsBootstrapSuperuser {
+		return nil, ErrPermissionDelegation
+	}
 	hasPassword := strings.TrimSpace(in.Password) != ""
 	hasProvisioner := false
 	for _, p := range provisioners {
@@ -70,6 +73,9 @@ func (s *Service) CreateUser(ctx context.Context, in CreateUserInput, provisione
 	if err != nil {
 		return nil, err
 	}
+	if err := ValidateDelegation(AdminFromContext(ctx), perms); err != nil {
+		return nil, err
+	}
 	permsJSON, err := marshalPermissions(perms)
 	if err != nil {
 		return nil, err
@@ -94,7 +100,10 @@ func (s *Service) CreateUser(ctx context.Context, in CreateUserInput, provisione
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after Commit
 
-	id, _ := generateID()
+	id, err := generateID()
+	if err != nil {
+		return nil, fmt.Errorf("generate account ID: %w", err)
+	}
 	createdAt := time.Now()
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO admins (id, username, display_name, password_hash, role, permissions, status, created_at, global_projects)
@@ -206,7 +215,7 @@ func (s *Service) IssueSession(ctx context.Context, adminID string) (*Session, e
 		}
 		return nil, fmt.Errorf("lookup account: %w", err)
 	}
-	if status == "disabled" {
+	if status != "active" {
 		return nil, ErrAccountDisabled
 	}
 	if err := s.checkAccess(ctx, adminID); err != nil {
@@ -217,13 +226,17 @@ func (s *Service) IssueSession(ctx context.Context, adminID string) (*Session, e
 		return nil, fmt.Errorf("generate token: %w", err)
 	}
 	expiresAt := time.Now().Add(24 * time.Hour)
-	sessionID, _ := generateID()
+	sessionID, err := generateID()
+	if err != nil {
+		return nil, fmt.Errorf("generate session ID: %w", err)
+	}
 	if _, err := s.db.ExecContext(ctx,
 		"INSERT INTO sessions (id, admin_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
 		sessionID, adminID, hashToken(token), expiresAt); err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
 	s.db.ExecContext(ctx, "UPDATE admins SET last_login_at = $1 WHERE id = $2", time.Now(), adminID)
+	s.recordSecurityEvent(ctx, "auth.session.issued", adminID)
 	return &Session{Token: token, ExpiresAt: expiresAt}, nil
 }
 

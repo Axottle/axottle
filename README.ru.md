@@ -113,12 +113,14 @@ curl -fsSL https://raw.githubusercontent.com/Axottle/axottle/main/install.sh | b
 
 ```sh
 python3 scripts/open-core/build-ui.py
-go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.5' -o axottle ./cmd/axottle-core
+go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.6-beta.2' -o axottle ./cmd/axottle-core
 go test ./...
 ```
 
 Для самостоятельного запуска в режиме разработки задайте `AXOTTLE_DB_URL` и постоянный `AXOTTLE_SECRET_KEY`, затем выполните `AXOTTLE_HOST=127.0.0.1 ./axottle serve`. Отдельный бинарник движка можно указать через `AXOTTLE_ENGINE_PATH`, а соединение с уже запущенным движком — через `AXOTTLE_ENGINE_SOCKET`.
 
 Исходники этого репозитория распространяются под MIT: [LICENSE](LICENSE). У отдельно поставляемых модулей и сторонних компонентов свои условия.
+
+Первичная настройка требует закрытый `bootstrap.token` из каталога данных. Для удалённого доступа используйте HTTPS или SSH-туннель. Проектные права и глобальное администрирование назначаются отдельно. Bootstrap-скрипт из GitHub остаётся корнем доверия: записанные в нём SHA-256 проверяют целостность артефактов, а подписи релизов проверяются внутри installer.
 
 </details>

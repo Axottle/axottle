@@ -34,7 +34,7 @@ export default function Accounts() {
     [username, setUsername] = useState(""),
     [display, setDisplay] = useState(""),
     [password, setPassword] = useState(""),
-    [permissions, setPermissions] = useState<string[]>(["settings.view"]),
+    [permissions, setPermissions] = useState<string[]>([]),
     [projects, setProjects] = useState<string[]>([]),
     [status, setStatus] = useState("active"),
     [busy, setBusy] = useState(false),
@@ -78,7 +78,7 @@ export default function Accounts() {
     setUsername(a?.username || "");
     setDisplay(a?.display_name || "");
     setPassword("");
-    setPermissions(a?.permissions || ["settings.view"]);
+    setPermissions(a?.permissions || []);
     setProjects(
       a?.project_ids || (session.project ? [session.project.id] : []),
     );

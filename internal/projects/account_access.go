@@ -3,24 +3,22 @@ package projects
 import (
 	"context"
 	"database/sql"
-	"strings"
+	"fmt"
 
 	"github.com/axottle/axottle/internal/auth"
 )
 
 // AccountPredicate scopes operator discovery, assignments and Telegram access
 // using the same grants as the interactive project selector.
-func AccountPredicate(ctx context.Context, column string) string {
-	id := ID(ctx)
-	if id == "" {
-		return "TRUE"
-	}
-	return "EXISTS (SELECT 1 FROM admins project_admin WHERE project_admin.id=" + column + " AND (project_admin.is_bootstrap_superuser OR project_admin.global_projects OR EXISTS (SELECT 1 FROM admin_projects ap WHERE ap.admin_id=project_admin.id AND ap.project_id='" + strings.ReplaceAll(id, "'", "''") + "')))"
+// column must be a static, trusted SQL identifier; bind ID(ctx) at parameter.
+func AccountPredicate(ctx context.Context, column string, parameter int) string {
+	p := fmt.Sprintf("$%d", parameter)
+	return "(" + p + "::text='' OR EXISTS (SELECT 1 FROM admins project_admin WHERE project_admin.id=" + column + " AND (project_admin.is_bootstrap_superuser OR project_admin.global_projects OR EXISTS (SELECT 1 FROM admin_projects ap WHERE ap.admin_id=project_admin.id AND ap.project_id=" + p + "))))"
 }
 
 func RequireAccount(ctx context.Context, db *sql.DB, adminID string) error {
 	var exists bool
-	err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM admins a WHERE a.id=$1 AND `+AccountPredicate(ctx, "a.id")+`)`, adminID).Scan(&exists)
+	err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM admins a WHERE a.id=$1 AND `+AccountPredicate(ctx, "a.id", 2)+`)`, adminID, ID(ctx)).Scan(&exists)
 	if err != nil {
 		return err
 	}
@@ -38,6 +36,9 @@ func RequireManagedAccount(ctx context.Context, db *sql.DB, adminID string) erro
 		return nil
 	}
 	if ID(ctx) == "" {
+		if auth.AdminFromContext(ctx) != nil {
+			return ErrNotFound
+		}
 		return nil
 	}
 	if err := RequireAccount(ctx, db, adminID); err != nil {

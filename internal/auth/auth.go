@@ -41,20 +41,22 @@ type Admin struct {
 // Sentinel errors let handlers map failures onto HTTP status codes without
 // string-matching. Everything else is treated as a 500.
 var (
-	ErrUsernameTaken      = errors.New("username already taken")
-	ErrAccountNotFound    = errors.New("account not found")
-	ErrWrongPassword      = errors.New("current password is incorrect")
-	ErrPasswordUnchanged  = errors.New("new password must differ from the current one")
-	ErrLastAdmin          = errors.New("cannot delete the last remaining admin")
-	ErrEmptyUsername      = errors.New("username is required")
-	ErrTOTPRequired       = errors.New("two-factor authentication required")
-	ErrTOTPInvalid        = errors.New("invalid authentication code")
-	ErrTOTPNotPending     = errors.New("two-factor setup is not pending")
-	ErrTOTPAlreadyOn      = errors.New("two-factor authentication is already enabled")
-	ErrSecretsUnavailable = errors.New("encrypted secret storage is unavailable")
-	ErrUnknownPermission  = errors.New("unknown permission")
-	ErrNoPermissions      = errors.New("at least one permission is required")
-	ErrLastFullAdmin      = errors.New("cannot revoke full access from the last full-access admin")
+	ErrUsernameTaken        = errors.New("username already taken")
+	ErrAccountNotFound      = errors.New("account not found")
+	ErrWrongPassword        = errors.New("current password is incorrect")
+	ErrPasswordUnchanged    = errors.New("new password must differ from the current one")
+	ErrLastAdmin            = errors.New("cannot delete the last remaining admin")
+	ErrEmptyUsername        = errors.New("username is required")
+	ErrTOTPRequired         = errors.New("two-factor authentication required")
+	ErrTOTPInvalid          = errors.New("invalid authentication code")
+	ErrTOTPNotPending       = errors.New("two-factor setup is not pending")
+	ErrTOTPAlreadyOn        = errors.New("two-factor authentication is already enabled")
+	ErrSecretsUnavailable   = errors.New("encrypted secret storage is unavailable")
+	ErrUnknownPermission    = errors.New("unknown permission")
+	ErrPermissionDelegation = errors.New("cannot grant permissions beyond your authority")
+	ErrRateLimited          = errors.New("too many authentication attempts; try again later")
+	ErrNoPermissions        = errors.New("at least one permission is required")
+	ErrLastFullAdmin        = errors.New("cannot revoke full access from the last full-access admin")
 	// ErrSuperuserProtected is returned when a protected action is attempted
 	// against the bootstrap superuser (delete, disable, narrow permissions,
 	// or removing its last local login) — see §3 of the unified-users spec.
@@ -117,7 +119,26 @@ type Service struct {
 	secrets            *secretstore.Service
 	// accessGate refuses a session to an account that has nothing left to open.
 	// Injected by the server, which can see the other modules; nil = no gate.
-	accessGate AccessGate
+	accessGate     AccessGate
+	sensitiveGuard *LoginGuard
+	securityEvent  func(context.Context, string, string)
+}
+
+// SetSecurityEventSink records account-security events without importing modules.
+func (s *Service) SetSecurityEventSink(sink func(context.Context, string, string)) {
+	s.securityEvent = sink
+}
+func (s *Service) recordSecurityEvent(ctx context.Context, action, id string) {
+	if s.securityEvent != nil {
+		s.securityEvent(ctx, action, id)
+	}
+}
+
+func (s *Service) recordSecurityResult(ctx context.Context, action, id string, err error) {
+	if err != nil {
+		action += ".failed"
+	}
+	s.recordSecurityEvent(ctx, action, id)
 }
 
 // SetSecretStore enables encrypted-at-rest TOTP secrets after the server has
@@ -149,11 +170,12 @@ func (s *Service) RevokeSessions(ctx context.Context, adminID string) error {
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE admin_id = $1", adminID); err != nil {
 		return fmt.Errorf("revoke sessions: %w", err)
 	}
+	s.recordSecurityEvent(ctx, "auth.sessions.revoked", adminID)
 	return nil
 }
 
 func NewService(database *db.DB, logger *slog.Logger) *Service {
-	return &Service{db: database, logger: logger}
+	return &Service{db: database, logger: logger, sensitiveGuard: NewLoginGuard(5, 5*time.Minute, 15*time.Minute)}
 }
 
 func (s *Service) Login(ctx context.Context, username, password, totpCode string) (*Session, error) {
@@ -181,7 +203,7 @@ func (s *Service) Login(ctx context.Context, username, password, totpCode string
 	}
 
 	// A disabled account may not sign in even with valid credentials.
-	if status == "disabled" {
+	if status != "active" {
 		return nil, errors.New("invalid credentials")
 	}
 
@@ -238,7 +260,10 @@ func (s *Service) Login(ctx context.Context, username, password, totpCode string
 	tokenHash := hashToken(token)
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	sessionID, _ := generateID()
+	sessionID, err := generateID()
+	if err != nil {
+		return nil, fmt.Errorf("generate session ID: %w", err)
+	}
 	_, err = s.db.ExecContext(ctx,
 		"INSERT INTO sessions (id, admin_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
 		sessionID, admin.ID, tokenHash, expiresAt,
@@ -276,51 +301,65 @@ func (s *Service) TOTPStatus(ctx context.Context, adminID string) (TOTPStatus, e
 	return TOTPStatus{Enabled: confirmed, Pending: !confirmed}, nil
 }
 
-func (s *Service) BeginTOTPSetup(ctx context.Context, adminID, username string) (*TOTPSetup, error) {
+func (s *Service) BeginTOTPSetup(ctx context.Context, adminID, username, password string) (_ *TOTPSetup, resultErr error) {
+	defer func() { s.recordSecurityResult(ctx, "auth.totp.setup", adminID, resultErr) }()
+	if err := s.Reauthenticate(ctx, adminID, password, ""); err != nil {
+		return nil, err
+	}
 	if s.secrets == nil {
 		return nil, ErrSecretsUnavailable
 	}
-	status, err := s.TOTPStatus(ctx, adminID)
+	secret, err := GenerateTOTPSecret()
 	if err != nil {
 		return nil, err
 	}
-	if status.Enabled {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	secretID := "totp.admin." + adminID
+	if err := s.secrets.WithTx(tx).Put(ctx, secretID, "admin_totp", []byte(secret), map[string]any{"admin_id": adminID}); err != nil {
+		return nil, err
+	}
+	res, err := tx.ExecContext(ctx, `
+  INSERT INTO admin_totp(admin_id,secret_id,confirmed_at,last_used_counter,created_at,updated_at)
+  VALUES($1,$2,NULL,0,NOW(),NOW()) ON CONFLICT(admin_id) DO UPDATE
+  SET secret_id=EXCLUDED.secret_id,last_used_counter=0,updated_at=NOW()
+  WHERE admin_totp.confirmed_at IS NULL`, adminID, secretID)
+	if err != nil {
+		return nil, err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return nil, err
+	} else if n != 1 {
 		return nil, ErrTOTPAlreadyOn
 	}
-	secret, err := GenerateTOTPSecret()
-	if err != nil {
-		return nil, fmt.Errorf("generate totp secret: %w", err)
-	}
-	secretID := "totp.admin." + adminID
-	if err := s.secrets.Put(ctx, secretID, "admin_totp", []byte(secret), map[string]any{"admin_id": adminID}); err != nil {
-		return nil, fmt.Errorf("store totp secret: %w", err)
-	}
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO admin_totp (admin_id, secret_id, confirmed_at, last_used_counter, created_at, updated_at)
-		VALUES ($1, $2, NULL, 0, NOW(), NOW())
-		ON CONFLICT (admin_id) DO UPDATE SET
-			secret_id = EXCLUDED.secret_id, confirmed_at = NULL,
-			last_used_counter = 0, updated_at = NOW()
-	`, adminID, secretID); err != nil {
-		_ = s.secrets.Delete(ctx, secretID)
-		return nil, fmt.Errorf("start totp setup: %w", err)
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
 	return &TOTPSetup{Secret: secret, URI: TOTPProvisioningURI(secret, username, "Axottle")}, nil
 }
 
-func (s *Service) ConfirmTOTP(ctx context.Context, adminID, code string) error {
+func (s *Service) ConfirmTOTP(ctx context.Context, adminID, code, password string) (resultErr error) {
+	defer func() { s.recordSecurityResult(ctx, "auth.totp.enabled", adminID, resultErr) }()
+	if err := s.Reauthenticate(ctx, adminID, password, ""); err != nil {
+		return err
+	}
 	if s.secrets == nil {
 		return ErrSecretsUnavailable
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var secretID string
 	var confirmed bool
-	err := s.db.QueryRowContext(ctx, `
-		SELECT secret_id, confirmed_at IS NOT NULL FROM admin_totp WHERE admin_id = $1
-	`, adminID).Scan(&secretID, &confirmed)
-	if err != nil || confirmed {
+	if err := tx.QueryRowContext(ctx, `SELECT secret_id,confirmed_at IS NOT NULL FROM admin_totp WHERE admin_id=$1 FOR UPDATE`, adminID).Scan(&secretID, &confirmed); err != nil || confirmed {
 		return ErrTOTPNotPending
 	}
-	secret, _, err := s.secrets.Get(ctx, secretID)
+	secret, _, err := s.secrets.WithTx(tx).Get(ctx, secretID)
 	if err != nil {
 		return fmt.Errorf("read totp secret: %w", err)
 	}
@@ -328,28 +367,21 @@ func (s *Service) ConfirmTOTP(ctx context.Context, adminID, code string) error {
 	if !ok || !s.credentialBoundary.accepts(time.Unix(counter*30, 0)) {
 		return ErrTOTPInvalid
 	}
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE admin_totp
-		SET confirmed_at = NOW(), last_used_counter = $1, updated_at = NOW()
-		WHERE admin_id = $2 AND confirmed_at IS NULL
-	`, counter, adminID)
-	if err != nil {
-		return fmt.Errorf("confirm totp: %w", err)
+	if _, err := tx.ExecContext(ctx, `UPDATE admin_totp SET confirmed_at=NOW(),last_used_counter=$1,updated_at=NOW() WHERE admin_id=$2`, counter, adminID); err != nil {
+		return err
 	}
-	if n, _ := res.RowsAffected(); n != 1 {
-		return ErrTOTPNotPending
-	}
-	return nil
+	return tx.Commit()
 }
 
-func (s *Service) DisableTOTP(ctx context.Context, adminID, password, code string) error {
+func (s *Service) DisableTOTP(ctx context.Context, adminID, password, code string) (resultErr error) {
+	defer func() { s.recordSecurityResult(ctx, "auth.totp.disabled", adminID, resultErr) }()
+	if !s.sensitiveGuard.Allow(adminID) {
+		return ErrRateLimited
+	}
 	var passwordHash, secretID string
 	var lastCounter int64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT a.password_hash, t.secret_id, t.last_used_counter
-		FROM admins a JOIN admin_totp t ON t.admin_id = a.id
-		WHERE a.id = $1 AND t.confirmed_at IS NOT NULL
-	`, adminID).Scan(&passwordHash, &secretID, &lastCounter)
+	err := s.db.QueryRowContext(ctx, `SELECT a.password_hash,t.secret_id,t.last_used_counter
+ FROM admins a JOIN admin_totp t ON t.admin_id=a.id WHERE a.id=$1 AND a.status='active' AND t.confirmed_at IS NOT NULL`, adminID).Scan(&passwordHash, &secretID, &lastCounter)
 	if err != nil {
 		return ErrAccountNotFound
 	}
@@ -367,8 +399,14 @@ func (s *Service) DisableTOTP(ctx context.Context, adminID, password, code strin
 	if !ok || counter <= lastCounter || !s.credentialBoundary.accepts(time.Unix(counter*30, 0)) {
 		return ErrTOTPInvalid
 	}
-	if _, err := s.db.ExecContext(ctx, "DELETE FROM admin_totp WHERE admin_id = $1", adminID); err != nil {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM admin_totp WHERE admin_id=$1 AND secret_id=$2 AND confirmed_at IS NOT NULL AND last_used_counter < $3`, adminID, secretID, counter)
+	if err != nil {
 		return fmt.Errorf("disable totp: %w", err)
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n != 1 {
+		return ErrTOTPInvalid
 	}
 	return nil
 }
@@ -384,10 +422,10 @@ func (s *Service) ValidateToken(ctx context.Context, token string) (*Admin, erro
 		SELECT a.id, a.username, a.display_name, a.role, a.status,
 		       a.is_bootstrap_superuser, a.permissions, a.password_hash IS NOT NULL, s.created_at
 		FROM sessions s JOIN admins a ON s.admin_id = a.id
-		WHERE s.token_hash = $1 AND s.expires_at > $2
+		WHERE s.token_hash = $1 AND s.expires_at > $2 AND a.status = 'active'
 	`, tokenHash, time.Now()).Scan(&admin.ID, &admin.Username, &admin.DisplayName, &admin.Role,
 		&admin.Status, &admin.IsBootstrapSuperuser, &permsRaw, &hasPassword, &issuedAt)
-	if err != nil || !s.credentialBoundary.accepts(issuedAt) {
+	if err != nil || admin.Status != "active" || !s.credentialBoundary.accepts(issuedAt) {
 		return nil, errors.New("invalid or expired token")
 	}
 	admin.HasPassword = hasPassword
@@ -411,7 +449,7 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 // already be non-empty and policy-valid (callers use ValidatePassword); this
 // method still normalises the username and maps a unique-violation onto
 // ErrUsernameTaken so the handler can return 409 rather than 500. permissions
-// is validated via NormalizePermissions (nil means full access). The created
+// is validated via NormalizePermissions (nil grants no capabilities). The created
 // Admin is returned so the caller can echo it back without a second query.
 func (s *Service) CreateAccount(ctx context.Context, username, password, role string, permissions []string, projectIDs ...[]string) (*Admin, error) {
 	var ids []string
@@ -481,19 +519,41 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Admin, error) {
 	return &a, nil
 }
 
-// UpdateAccountPermissions replaces an account's permission list. It refuses
-// to leave the panel without a single full-access admin: narrowing the last
-// account that still holds the wildcard is rejected with ErrLastFullAdmin.
+// authorizeAccountEdit prevents a delegated manager from changing the lifecycle
+// or profile of an account with greater authority, including re-enabling it.
+func (s *Service) authorizeAccountEdit(ctx context.Context, id string) error {
+	actor := AdminFromContext(ctx)
+	if actor == nil || actor.IsBootstrapSuperuser || actor.ID == id {
+		return nil
+	}
+	target, err := s.GetAccount(ctx, id)
+	if err != nil {
+		return err
+	}
+	if target.IsBootstrapSuperuser {
+		return ErrSuperuserProtected
+	}
+	return ValidateDelegation(actor, target.Permissions)
+}
+
+// UpdateAccountPermissions replaces an account's permission list while
+// preserving the protected bootstrap owner's wildcard.
 // The "don't narrow your own account" guard lives in the handler, which knows
 // the acting admin. Takes effect on the target's next request — permissions
 // are re-read from the DB by ValidateToken every time.
 func (s *Service) UpdateAccountPermissions(ctx context.Context, id string, permissions []string) (*Admin, error) {
+	if err := s.authorizeAccountEdit(ctx, id); err != nil {
+		return nil, err
+	}
 	perms, err := NormalizePermissions(permissions)
 	if err != nil {
 		return nil, err
 	}
 
-	if perms[0] != PermissionAll {
+	if err := ValidateDelegation(AdminFromContext(ctx), perms); err != nil {
+		return nil, err
+	}
+	if !HasWildcard(perms) {
 		// The bootstrap superuser must keep full access (§3).
 		var isSuperuser bool
 		if err := s.db.QueryRowContext(ctx,
@@ -553,6 +613,9 @@ func (s *Service) UpdateAccountPermissions(ctx context.Context, id string, permi
 // ErrSuperuserProtected (the DB trigger is the backstop). Returns the updated
 // account.
 func (s *Service) UpdateAccountProfile(ctx context.Context, id string, displayName, status *string) (*Admin, error) {
+	if err := s.authorizeAccountEdit(ctx, id); err != nil {
+		return nil, err
+	}
 	if status != nil {
 		switch *status {
 		case "invited", "active", "disabled":
@@ -597,7 +660,7 @@ func (s *Service) UpdateAccountProfile(ctx context.Context, id string, displayNa
 	}
 	// If the account was disabled, terminate its sessions immediately.
 	if status != nil && *status == "disabled" {
-		if _, derr := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE admin_id = $1", id); derr != nil {
+		if derr := s.RevokeSessions(ctx, id); derr != nil {
 			s.logger.Error("disable account: revoke sessions", "error", derr, "admin_id", id)
 		}
 	}
@@ -607,21 +670,16 @@ func (s *Service) UpdateAccountProfile(ctx context.Context, id string, displayNa
 	return &admin, nil
 }
 
-// decodePermissions unmarshals the admins.permissions JSONB column. A missing
-// value (pre-migration row read inside the migration window) degrades to full
-// access, matching the column default.
+// decodePermissions fails closed for missing or malformed stored grants.
 func decodePermissions(raw []byte) ([]string, error) {
 	if len(raw) == 0 {
-		return []string{PermissionAll}, nil
+		return []string{}, nil
 	}
 	var perms []string
 	if err := json.Unmarshal(raw, &perms); err != nil {
 		return nil, err
 	}
-	if len(perms) == 0 {
-		return []string{PermissionAll}, nil
-	}
-	return perms, nil
+	return NormalizePermissions(perms)
 }
 
 // DeleteAccount removes an admin by id. It refuses to delete the final
@@ -630,6 +688,9 @@ func decodePermissions(raw []byte) ([]string, error) {
 // the acting admin's id. Deleting cascades to that admin's sessions (FK ON
 // DELETE CASCADE), logging them out immediately.
 func (s *Service) DeleteAccount(ctx context.Context, id string) error {
+	if err := s.authorizeAccountEdit(ctx, id); err != nil {
+		return err
+	}
 	// The bootstrap superuser can never be deleted (§3). Checked here so the
 	// caller gets ErrSuperuserProtected rather than the raw trigger violation.
 	var isSuperuser bool
@@ -694,22 +755,21 @@ func (s *Service) ChangePassword(ctx context.Context, adminID, oldPassword, newP
 		return fmt.Errorf("hash password: %w", err)
 	}
 
-	if _, err := s.db.ExecContext(ctx,
-		"UPDATE admins SET password_hash = $1 WHERE id = $2", string(newHash), adminID,
-	); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "UPDATE admins SET password_hash=$1 WHERE id=$2", string(newHash), adminID); err != nil {
 		return fmt.Errorf("update password: %w", err)
 	}
-
-	// Invalidate other sessions. A failure here is logged but not fatal: the
-	// password is already changed, and stale sessions still expire on their
-	// own 24h TTL.
-	if _, err := s.db.ExecContext(ctx,
-		"DELETE FROM sessions WHERE admin_id = $1 AND token_hash <> $2",
-		adminID, hashToken(keepToken),
-	); err != nil {
-		s.logger.Error("change password: revoke other sessions", "error", err, "admin_id", adminID)
+	if _, err := tx.ExecContext(ctx, "DELETE FROM sessions WHERE admin_id=$1 AND token_hash<>$2", adminID, hashToken(keepToken)); err != nil {
+		return fmt.Errorf("revoke other sessions: %w", err)
 	}
-
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.recordSecurityEvent(ctx, "auth.sessions.revoked", adminID)
 	return nil
 }
 
@@ -718,10 +778,14 @@ func (s *Service) ChangePassword(ctx context.Context, adminID, oldPassword, newP
 // linking/unlinking the superuser's Telegram). Returns ErrWrongPassword or
 // ErrTOTPInvalid/ErrTOTPRequired on failure. A password-less account cannot be
 // reauthenticated by password and is rejected with ErrWrongPassword.
-func (s *Service) Reauthenticate(ctx context.Context, adminID, password, totpCode string) error {
+func (s *Service) Reauthenticate(ctx context.Context, adminID, password, totpCode string) (resultErr error) {
+	defer func() { s.recordSecurityResult(ctx, "auth.reauthenticated", adminID, resultErr) }()
+	if !s.sensitiveGuard.Allow(adminID) {
+		return ErrRateLimited
+	}
 	var passwordHash sql.NullString
 	if err := s.db.QueryRowContext(ctx,
-		"SELECT password_hash FROM admins WHERE id = $1", adminID).Scan(&passwordHash); err != nil {
+		"SELECT password_hash FROM admins WHERE id = $1 AND status = 'active'", adminID).Scan(&passwordHash); err != nil {
 		return ErrAccountNotFound
 	}
 	if !passwordHash.Valid {
@@ -754,6 +818,15 @@ func (s *Service) Reauthenticate(ctx context.Context, adminID, password, totpCod
 	}
 	counter, ok := validateTOTPCounter(string(secret), totpCode, time.Now())
 	if !ok || counter <= lastCounter || !s.credentialBoundary.accepts(time.Unix(counter*30, 0)) {
+		return ErrTOTPInvalid
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE admin_totp SET last_used_counter=$1,updated_at=NOW() WHERE admin_id=$2 AND secret_id=$3 AND confirmed_at IS NOT NULL AND last_used_counter < $1`, counter, adminID, secretID)
+	if err != nil {
+		return fmt.Errorf("record totp counter: %w", err)
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n != 1 {
 		return ErrTOTPInvalid
 	}
 	return nil
