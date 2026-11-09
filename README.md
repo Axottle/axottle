@@ -113,7 +113,7 @@ Before building the Go binary, compile the public UI. Generated bundles are not 
 
 ```sh
 python3 scripts/open-core/build-ui.py
-go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.6-beta.2' -o axottle ./cmd/axottle-core
+go build -trimpath -buildvcs=false -ldflags='-X github.com/axottle/axottle/internal/version.Version=v2.0.6-beta.3' -o axottle ./cmd/axottle-core
 go test ./...
 ```
 
