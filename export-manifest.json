@@ -2,8 +2,8 @@
   "files": {
     ".gitignore": "c1772af9dcfc20dbd174e0354a4e068434fdaca2e68fef82945c3cdb10d2f310",
     "LICENSE": "41f9b38758a1bd419f7d5d0a79a1f477d18703e2f24c095dbf76ce907755d378",
-    "README.md": "8e5578b0db38e5637e99effe4991d76d7742ba90c748736d74d0ecc37538ff7d",
-    "README.ru.md": "31597141dcf3d31c5af898015562e143835ee659af1f32c8aa0297380917f6ac",
+    "README.md": "8ac0dd5c44793703b844cb4425d2983a4a12f8fd708fd006d5678a388cc2e63c",
+    "README.ru.md": "ea946cb2969b159873f439593dcf1cbfabe1df27f1f975e49d2d62dfd96e24f5",
     "cmd/axottle-core/main.go": "44c5f5336d6436f22564a6178fe180e0387e7a70b4079f91fd9287311859db96",
     "cmd/axottle-installer/main.go": "a32fdc2d0ceb6a976df2a106139b298547881246a9b5d5a746962b863271be93",
     "docs/assets/readme-banner.svg": "5ca6f5bd20709a983d2189611e7447d64d7cb6c6f7affead152505fe3deb2210",
@@ -150,7 +150,7 @@
     "web/admin/tsconfig.json": "ac21e01badfeb28c0cee04df142b9b3f930b99eed213b499f727a0b57d68cde6"
   },
   "publishable": true,
-  "release_version": "v2.0.6-beta.3",
+  "release_version": "v2.0.6-beta.4",
   "schema": 1,
   "stage": "standalone-core-ui"
 }
